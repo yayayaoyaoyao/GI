@@ -1,0 +1,291 @@
+library(gridExtra)
+library(ggplot2)
+library(gsDesign)
+patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/"
+pathb='ptw/delayed_response_0'
+pathc = 'GSD/delayed_response_00'
+pathd='ptw/delayed_response_1'
+pathe='ptw/delayed_response_2'
+pathf = 'GSD/delayed_response_11'
+pathg = 'GSD/delayed_response_22'
+pathh = 'equal_randomisation/delayed_response_0'
+pathi = 'equal_randomisation/delayed_response_1'
+pathj = 'equal_randomisation/delayed_response_2'
+
+pathk = 'DABCD/w_1/delayed_response_0'
+pathl = 'DABCD/w_1/delayed_response_1'
+pathm = 'DABCD/w_1/delayed_response_2'
+pathn = 'DABCD/w_q/delayed_response_0'
+patho = 'DABCD/w_q/delayed_response_1'
+pathp = 'DABCD/w_q/delayed_response_2'
+patterna='ptw.*1.csv'
+patternb='twoarms.*\\.csv'
+patternc='er.*1.csv'
+patternd='dabcd.*.csv'
+
+
+files1<-list.files(paste(c(patha,pathb),collapse = ""),pattern = patterna,full.names=TRUE)
+sim1<-do.call(rbind,lapply(files1,read.csv,stringsAsFactors= TRUE))
+files2<-list.files(paste(c(patha,pathc),collapse = ""),pattern = patternb,full.names=TRUE)
+sim2<-do.call(rbind,lapply(files2,read.csv,stringsAsFactors= TRUE))
+files3<-list.files(paste(c(patha,pathd),collapse = ""),pattern = patterna,full.names=TRUE)
+sim3<-do.call(rbind,lapply(files3,read.csv,stringsAsFactors= TRUE))
+files4<-list.files(paste(c(patha,pathe),collapse = ""),pattern = patterna,full.names=TRUE)
+sim4<-do.call(rbind,lapply(files4,read.csv,stringsAsFactors= TRUE))
+files5<-list.files(paste(c(patha,pathf),collapse = ""),pattern = patternb,full.names=TRUE)
+sim5<-do.call(rbind,lapply(files5,read.csv,stringsAsFactors= TRUE))
+files6<-list.files(paste(c(patha,pathg),collapse = ""),pattern = patternb,full.names=TRUE)
+sim6<-do.call(rbind,lapply(files6,read.csv,stringsAsFactors= TRUE))
+
+files7<-list.files(paste(c(patha,pathh),collapse = ""),pattern = patternc,full.names=TRUE)
+sim7<-do.call(rbind,lapply(files7,read.csv,stringsAsFactors= TRUE))
+files8<-list.files(paste(c(patha,pathi),collapse = ""),pattern = patternc,full.names=TRUE)
+sim8<-do.call(rbind,lapply(files8,read.csv,stringsAsFactors= TRUE))
+files9<-list.files(paste(c(patha,pathj),collapse = ""),pattern = patternc,full.names=TRUE)
+sim9<-do.call(rbind,lapply(files9,read.csv,stringsAsFactors= TRUE))
+
+files10<-list.files(paste(c(patha,pathk),collapse = ""),pattern = patternd,full.names=TRUE)
+sim10<-do.call(rbind,lapply(files10,read.csv,stringsAsFactors= TRUE))
+files11<-list.files(paste(c(patha,pathl),collapse = ""),pattern = patternd,full.names=TRUE)
+sim11<-do.call(rbind,lapply(files11,read.csv,stringsAsFactors= TRUE))
+files12<-list.files(paste(c(patha,pathm),collapse = ""),pattern = patternd,full.names=TRUE)
+sim12<-do.call(rbind,lapply(files12,read.csv,stringsAsFactors= TRUE))
+
+files13<-list.files(paste(c(patha,pathn),collapse = ""),pattern = patternd,full.names=TRUE)
+sim13<-do.call(rbind,lapply(files13,read.csv,stringsAsFactors= TRUE))
+files14<-list.files(paste(c(patha,patho),collapse = ""),pattern = patternd,full.names=TRUE)
+sim14<-do.call(rbind,lapply(files14,read.csv,stringsAsFactors= TRUE))
+files15<-list.files(paste(c(patha,pathp),collapse = ""),pattern = patternd,full.names=TRUE)
+sim15<-do.call(rbind,lapply(files15,read.csv,stringsAsFactors= TRUE))
+
+
+plotfun<-function(dat,enrollrate,hypo1,hypo2,method){
+  subdat<-dat[dat$hypothesisn1==hypo1 & dat$hypothesisn2==hypo2 & dat$enrollrate==enrollrate &
+                dat$proportion1==0.5 & dat$proportion2==0,]
+
+  if (method=='PTW' ){
+    ggplot(data = subdat, aes(x = Phi0)) +
+      geom_histogram(bins=60)+
+      theme_classic()+
+      ggtitle(paste('H0',": " ,hypo1,", " ,hypo1,", " ,'H1', ": ",hypo1,", " , hypo2)) +#, "\n", "no delay",", " ,
+      # "DF = ",df,", " ,"BS = ",bs)) +
+      xlab(label = "Z Statistics") +
+      ylab('Frequency')+ylim(0, 100)+
+      xlim(-5, 5)
+  }else if (method=='GSD'){
+
+    design <- gsDesign(k = unique(subdat$interimn), test.type = 1, alpha = 0.025, sfu = "OF")
+    boundaries <- design$upper$bound
+    z<-subdat[, "Phi0"  ]
+    #z1<-subdat[subdat$stopseq02==1, "Phi0"  ]
+    #z2<-subdat[subdat$stopseq02==2,"Phi0"  ]
+   # z3<-subdat[subdat$stopseq02==3, "Phi0"  ]
+    #z4<-subdat[subdat$stopseq02==4, "Phi0"  ]
+   # I<-((1:unique(subdat$interimn))/unique(subdat$interimn)) *  unique(subdat$totsamplesize)/2/(((hypo1+hypo2)/2)*(1-(hypo1+hypo2)/2))^2
+
+    I<-1/((((hypo1+hypo2)/2)*(1-(hypo1+hypo2)/2)) * (4/((1:unique(subdat$interimn))*unique(subdat$totsamplesize)/unique(subdat$interimn)) ) )
+
+
+    # I<-c(mean(subdat[subdat$stopseq02==1, "successArm.1.0" ]/subdat[subdat$stopseq02==1,  "patientsintrial1" ]-
+    #             subdat[subdat$stopseq02==1, "successArm.2.0" ]/subdat[subdat$stopseq02==1,  "patientsintrial2" ]),
+    #      mean(subdat[subdat$stopseq02==2, "successArm.1.0" ]/subdat[subdat$stopseq02==2,  "patientsintrial1" ]-
+    #        subdat[subdat$stopseq02==2, "successArm.2.0" ]/subdat[subdat$stopseq02==2,  "patientsintrial2" ]),
+    #        mean(subdat[subdat$stopseq02==3, "successArm.1.0" ]/subdat[subdat$stopseq02==3,  "patientsintrial1" ]-
+    #        subdat[subdat$stopseq02==3, "successArm.2.0" ]/subdat[subdat$stopseq02==3,  "patientsintrial2" ]),
+    #        mean(subdat[subdat$stopseq02==4, "successArm.1.0" ]/subdat[subdat$stopseq02==4,  "patientsintrial1" ]-
+    #        subdat[subdat$stopseq02==4, "successArm.2.0" ]/subdat[subdat$stopseq02==4,  "patientsintrial2" ])
+    #
+    #      )
+    #  y<-subdat[, "successArm.1.0" ]/subdat[,  "patientsintrial1" ]-
+    # subdat[, "successArm.2.0" ]/subdat[,  "patientsintrial2" ]
+    y <- seq(-1, 1, by = 0.01)
+    z1<-y*sqrt(I[1])
+    z2<-y*sqrt(I[2])
+    z3<-y*sqrt(I[3])
+    z4<-y*sqrt(I[4])
+
+    f1_y <- sapply(z1, FUN = function(x) gsDensity(x = design, theta = 0, i = 1, zi = x)$density[,1] ) * sqrt(I[1])
+    f2_y <- sapply(z2, FUN = function(x) gsDensity(x = design, theta = 0, i = 2, zi = x)$density[,1] ) *sqrt(I[2])
+    f3_y <- sapply(z3, FUN = function(x) gsDensity(x = design, theta = 0, i = 3, zi = x)$density[,1] ) * sqrt(I[3])
+    f4_y <- sapply(z4, FUN = function(x) gsDensity(x = design, theta = 0, i = 4, zi = x)$density[,1] ) *sqrt(I[4])
+
+    f_y <- f1_y * (abs(z1) > boundaries[1]) + f2_y * (abs(z2) > boundaries[2]) + f3_y * (abs(z3) > boundaries[3]) + f4_y
+
+
+    ggplot(data = subdat, aes(x = Phi0)) +
+      geom_histogram(bins=60)+
+      theme_classic()+
+      ggtitle(paste('H0',": " ,(hypo1+hypo2)/2,", " ,(hypo1+hypo2)/2,", " ,'H1', ": ",hypo1,", " , hypo2)) +#, "\n", "no delay",", " ,
+      # "DF = ",df,", " ,"BS = ",bs)) +
+      xlab(label = "Z Statistics") +
+      ylab('Frequency')+ylim(0, 100)+geom_density(aes(y=60*..density..),color="red")+
+      xlim(-5, 5)
+  }else {
+    ggplot(data = subdat, aes(x = phi02)) +
+      geom_histogram(bins=60)+
+      theme_classic()+
+      ggtitle(paste('H0',": " ,hypo1,", " ,hypo1,", " ,'H1', ": ",hypo1,", " , hypo2)) +#, "\n", "no delay",", " ,
+      # "DF = ",df,", " ,"BS = ",bs)) +
+      xlab(label = "Z Statistics") +
+      ylab('Frequency')+ylim(0,100)+
+      xlim(-5, 5)
+  }
+
+}
+
+plotfun1<-function(dat,enrollrate,path1,top1,method){
+  plot1<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.1,hypo2=0.2, method=method)
+  plot2<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.1,hypo2=0.3, method=method)
+  plot3<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.2,hypo2=0.3, method=method)
+  plot4<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.2,hypo2=0.4, method=method)
+  plot5<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.2,hypo2=0.5, method=method)
+  plot6<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.3,hypo2=0.4, method=method)
+  plot7<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.3,hypo2=0.5, method=method)
+  plot8<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.3,hypo2=0.6, method=method)
+  plot9<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.4,hypo2=0.5, method=method)
+  plot10<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.4,hypo2=0.6, method=method)
+  plot11<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.4,hypo2=0.7, method=method)
+  plot12<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.5,hypo2=0.6, method=method)
+  plot13<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.5,hypo2=0.7, method=method)
+  plot14<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.5,hypo2=0.8, method=method)
+  plot15<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.6,hypo2=0.7, method=method)
+  plot16<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.6,hypo2=0.8, method=method)
+  plot17<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.7,hypo2=0.8, method=method)
+  plot18<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.7,hypo2=0.9, method=method)
+  plot19<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.8,hypo2=0.9, method=method)
+  ggsave(path1,width=10, height=15,grid.arrange(top=top1,
+                                                plot1, plot2,plot3, plot4,plot5, plot6,plot7, plot8,plot9, plot10,
+                                                plot11, plot12,plot13, plot14,plot15, plot16,plot17, plot18,plot19 , ncol=3, nrow=7))
+
+}
+
+###################
+plotfun1(dat=sim1,enrollrate=0.1,method='PTW',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/ptw/ptw_no_delay.pdf",
+         top1='Histogram of Z Statistics Using PTW with No Delay Under the Null Hypothesis')
+
+plotfun1(dat=sim3,enrollrate=0.1,method='PTW',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/ptw/ptw_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using PTW with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+plotfun1(dat=sim3,enrollrate=0.5,method='PTW',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/ptw/ptw_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using PTW with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim3,enrollrate=0.9,method='PTW',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/ptw/ptw_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using PTW with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim4,enrollrate=0.1,method='PTW',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/ptw/ptw_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using PTW with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+plotfun1(dat=sim4,enrollrate=0.5,method='PTW',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/ptw/ptw_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using PTW with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim4,enrollrate=0.9,method='PTW',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/ptw/ptw_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using PTW with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+###################
+plotfun1(dat=sim10,enrollrate=0.1,method='Neyman',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/neyman/neyman_no_delay.pdf",
+         top1='Histogram of Z Statistics Using Neyman with No Delay Under the Null Hypothesis')
+
+plotfun1(dat=sim11,enrollrate=0.1,method='Neyman',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/neyman/neyman_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using Neyman with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+plotfun1(dat=sim11,enrollrate=0.5,method='Neyman',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/neyman/neyman_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using Neyman with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim11,enrollrate=0.9,method='Neyman',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/neyman/neyman_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using Neyman with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim12,enrollrate=0.1,method='Neyman',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/neyman/neyman_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using Neyman with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+plotfun1(dat=sim12,enrollrate=0.5,method='Neyman',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/neyman/neyman_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using Neyman with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim12,enrollrate=0.9,method='Neyman',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/neyman/neyman_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using Neyman with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+###################
+plotfun1(dat=sim13,enrollrate=0.1,method='RSIHR',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/RSIHR/RSIHR_no_delay.pdf",
+         top1='Histogram of Z Statistics Using RSIHR with No Delay Under the Null Hypothesis')
+
+plotfun1(dat=sim14,enrollrate=0.1,method='RSIHR',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/RSIHR/RSIHR_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using RSIHR with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+plotfun1(dat=sim14,enrollrate=0.5,method='RSIHR',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/RSIHR/RSIHR_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using RSIHR with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim14,enrollrate=0.9,method='RSIHR',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/RSIHR/RSIHR_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using RSIHR with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim15,enrollrate=0.1,method='RSIHR',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/RSIHR/RSIHR_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using RSIHR with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+plotfun1(dat=sim15,enrollrate=0.5,method='RSIHR',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/RSIHR/RSIHR_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using RSIHR with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim15,enrollrate=0.9,method='RSIHR',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/RSIHR/RSIHR_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using RSIHR with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+###################
+plotfun1(dat=sim2,enrollrate=0.1,method='GSD',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/GSD/GSD_no_delay.pdf",
+         top1='Histogram of Z Statistics Using GSD with No Delay Under the Null Hypothesis')
+
+plotfun1(dat=sim5,enrollrate=0.1,method='GSD',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/GSD/GSD_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using GSD with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+plotfun1(dat=sim5,enrollrate=0.5,method='GSD',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/GSD/GSD_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using GSD with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim5,enrollrate=0.9,method='GSD',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/GSD/GSD_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using GSD with 1 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim6,enrollrate=0.1,method='GSD',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/GSD/GSD_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using GSD with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+plotfun1(dat=sim6,enrollrate=0.5,method='GSD',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/GSD/GSD_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using GSD with 2 month Delay and ER=0.5 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim6,enrollrate=0.9,method='GSD',
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/GSD/GSD_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using GSD with 2 month Delay and ER=0.5 Under the Null Hypothesis')

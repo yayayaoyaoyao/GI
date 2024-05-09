@@ -1,0 +1,7 @@
+"0","result11a<-as.data.frame(do.call(cbind,result))
+
+result11a$max<-apply(result11a, 2, which.min)
+"
+"2","Error in `$<-.data.frame`(`*tmp*`, max, value = c(r1 = 148329L, r2 = 315218L,  : 
+  replacement has 3 rows, data has 1000000
+"

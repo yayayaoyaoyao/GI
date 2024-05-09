@@ -1,0 +1,1793 @@
+library(RCTdesign)
+options(scipen=999)
+
+SimulateAMonthOfAccrualTimes <- function( dPatsPerMonth , dStartMonth )
+{
+  nQtyPats    <- 1.2 *qpois(0.9999,dPatsPerMonth)
+  vTimes      <- cumsum( rexp( nQtyPats, dPatsPerMonth ) )
+  vTimes      <- vTimes[ vTimes < 1 ]
+  vTimes      <- vTimes + dStartMonth
+  return( vTimes )
+}
+
+
+SimulateArrivalTimes <- function( vPatsPerMonth, nMaxQtyPats )
+{
+  vTimes <- c()
+  if( length( vPatsPerMonth ) == 1 )
+  {
+    vTimes <- cumsum(rexp(nMaxQtyPats ,vPatsPerMonth))
+  }
+  else
+  {
+    dStartMonth <- 0
+    nMonth     <- 1
+    while( length( vTimes ) < nMaxQtyPats  )
+    {
+
+      vTimes      <- c( vTimes, SimulateAMonthOfAccrualTimes( vPatsPerMonth[ nMonth ], dStartMonth ))
+      dStartMonth <- dStartMonth + 1
+
+      if( nMonth < length( vPatsPerMonth ) )
+        nMonth <- nMonth +  1
+    }
+    vTimes <- vTimes[ 1:nMaxQtyPats ]
+  }
+  return( vTimes )
+}
+
+SimulateOutcomeObservedTime <- function( vStartTime )
+{
+  vTimeToOutcome <-0
+  vObsTime <- vStartTime  + vTimeToOutcome
+  return( vObsTime )
+}
+
+
+blockrand = function(blocksize,N,armn,armlabel){
+  block = rep(1:ceiling(N/blocksize), each = blocksize)
+  a1 = data.frame(block, rand=runif(length(block)), envelope= 1: length(block))
+  a2 = a1[order(a1$block,a1$rand),]
+  a2$arm = rep(armlabel,times = length(block)/armn)
+  assign = a2[order(a2$envelope),]
+  return(assign[,c("block","arm")])
+}
+
+simforfixed<- function(arm=5,alpha=0.025/4,power=0.9,h,interimn) {
+  binomialobf<-list()
+  binomialfixsamplesize<-rep(0,arm) #matrix(0,nrow=arm-1,ncol=1)
+
+  for (m in 2:arm) {
+    binomialfix<-seqDesign(prob.model="proportions", arms=2,
+                           size=alpha, power=power,ratio = c(1., 1.),
+                           null.hypothesis=  c(h[1],h[1]), alt.hypothesis=c(h[m],h[1]) ,
+                           variance="alternative", test.type="greater",
+                           #variance="alternative", test.type="greater",
+                           display.scale = "Z")
+    binomialobf[[m]] <-update(binomialfix, nbr.analyses=interimn) #OBF
+
+    binomialfixsamplesize[m]<-ifelse(max(ceiling(sampleSize(binomialobf[[m]]))) %% (2*interimn) == 0,
+                                     max(ceiling(sampleSize(binomialobf[[m]]))),
+                                     ceiling(max(ceiling(sampleSize(binomialobf[[m]])))/(2*interimn))*(2*interimn) )
+  }
+
+  treatindex<-which.max(binomialfixsamplesize)
+
+  return(list(binomialfixsamplesize[[treatindex]],binomialobf[[treatindex]],(treatindex)))
+}
+
+simforfixed1<-function(j,x,N2,armn,armlabel,h,interimn) {
+  ###print(h)
+  vStartTime<-sort(sim11[[j]][[x]][[3]][1:N2], decreasing = FALSE)
+  vOutcomeTime<-SimulateOutcomeObservedTime(vStartTime)
+  data1<-matrix(NA_real_,nrow=N2,ncol=5)
+  data1[,1]<-1:N2
+  data1[,2]<-vStartTime
+  data1[,3]<-vOutcomeTime
+  armleft<-c(1:armn)
+  armlabel1<-armlabel
+  controlnum<-vector("list",armn)
+  assign11<-blockrand(blocksize=2*armn,N=N2,armn=length(armleft),armlabel=armlabel)[1:N2,]
+  assign11<-cbind(assign11,index=c(1:N2))
+  compare<-vector("list",armn)
+  zz<-vector("list",armn)
+  interimoutput<-matrix(NA,(armn),1)
+  decision<-matrix(NA,(armn),1)
+  stopseq<-matrix(NA,(armn),1)
+  zzf<-matrix(NA,(armn),1)
+  index2<-rep(NA,interimn)
+  nnn=ceiling(N2/(interimn*armn))
+  nn<-rep(NA,interimn)
+  stopp<-0
+  effstop<-0
+  nstart<-0
+  nnup<-0
+  cumuindex1<-0
+
+  for (i in 1:interimn){
+
+    if (i==1){
+      nn[i]=nnn*armn
+      assign1<-assign11[1:(nnn*armn),]
+      data1[1:(nnn*armn),4]<-assign1$arm
+      index1<- max(as.numeric(data1[1:(nnn*armn),3]))
+      index2[i]<-max( nrow(data1[as.numeric(data1[,2])<=as.numeric(index1),]),nn[1])
+      data1[(nnn+1):index2[i],4]<-assign11[(nnn+1):index2[i],]$arm
+
+      for (jj in 1:armn) {
+        for (n in (1:index2[i])){
+
+          # if (sprintf("Arm %s",jj) %in% data1[n, 4] ){
+          if ( data1[n, 4]==sprintf("Arm %s",jj) ){
+            data1[n,5]<-rbinom(1,size=1,prob=h[[jj]])
+
+          }
+        }
+      }
+      index21<-cumsum(index2)
+      nn1<-cumsum(nn)
+      nstart=2#i
+
+      if (index21[1]==N2){
+        stopp=1
+        nn[2:interimn]=nnn*armn
+        nn1<-cumsum(nn)
+      }
+
+
+
+    }else{
+
+      if(stopp==0 &  index21[1]<N2 & index21[1]<(nnn*2*armn) & interimn==4 ){
+        if (i==2){
+          if ((nnn*2*armn)>=(index21[1]+1)){
+            assign1a<-assign11[(index21[i-1]+1):(nnn*2*armn),]
+            assign1<-assign1a[ assign1a$arm %in% armlabel1,]
+          } else{
+            assign1<-data.frame()
+          }
+          nn[2]=nrow(assign1)+index21[i-1]-nn[1]
+          nstart=3
+        }
+
+        if ((nnn*nstart*armn)>=(index21[i-1]+1)){
+          assign1a<-assign11[max((index21[i-1]+1),cumuindex1+1):(nnn*nstart*armn),]
+          assign1<-assign1a[ assign1a$arm %in% armlabel1,]
+        } else{
+          assign1<-data.frame()
+        }
+
+        if (i==3 & nstart==3 & is.na(nn[i]) & nnup==0){
+          nn[i]=index21[i-1]-sum(nn[1:(i-1)])+nrow(assign1)
+
+        }
+
+        if (i==4 & nstart==4 ){
+          nn[i]=index21[i-1]-sum(nn[1:(i-1)])+nrow(assign1)
+        }
+
+        if (i==3 & nstart==3 & nnup>0){
+          nn[i]=index21[i-1]-sum(nn[1:(i-1)])+nrow(assign1)
+        }
+
+        index1<- max(as.numeric(data1[1:(sum(nn[1:nstart],na.rm=TRUE)),3]))
+        index2[i]<-min(nrow(data1[as.numeric(data1[,2])<=as.numeric(index1),])-(index21[i-1]),#+1
+                       nrow(assign1)+nnn*(interimn-nstart)*length(armleft) )
+
+        index21<-cumsum(index2)
+
+
+        if (i==2 & index2[i]>=nrow(assign1)){
+          nn[3]=(index21[i-1]+nrow(assign1))-sum(nn[1:2])
+          nstart=4 # to block 4
+        }
+
+        if (i==3 & nstart==3 &  index2[i]==nrow(assign1)+nnn*length(armleft)){
+          nn[4]=min(nnn*length(armleft),index21[i]-sum(nn[!is.na(nn)]))#nnn*length(armleft)# finish
+          stopp=1
+        } else if (i==3 & nstart==4 & index2[i]==nrow(assign1) & index2[i]>0){
+          nn[4]=(index21[i-1]+nrow(assign1))-sum(nn[1:3],na.rm=TRUE) #finish
+          stopp=1
+        } else if (i==3 & nstart==4 & index2[i]==nrow(assign1) & index2[i]==0){
+          nnup=(index21[i-1]+nrow(assign1))-sum(nn[1:3],na.rm=TRUE)
+        } else if (i==3 & nstart==4 & index2[i]<nrow(assign1)){
+          nnup=(index21[i-1]+nrow(assign1))-sum(nn[1:3],na.rm=TRUE)
+        }else if (i==2 & nstart==3 & index2[i]<nrow(assign1)){
+          nnup=(index21[i-1]+nrow(assign1))-sum(nn[1:2],na.rm=TRUE)
+        }
+
+        if (i==3 & stopp==0){
+          nstart=4
+        }
+        if (index2[i]>=(nrow(assign1)+nnn*length(armleft))){
+          for (ii in 1:(interimn-i)){
+            if (index2[i]<(nrow(assign1)+nnn*length(armleft)*ii)){
+              ii1=ii-1
+              break
+            }else if (index2[i]==(nrow(assign1)+nnn*length(armleft)*ii)){
+              ii1=ii
+              break
+            }
+          }
+
+          for (iii in 1:ii1){
+            if ((nstart+iii)<=interimn){
+              nn[nstart+iii]=nnn*length(armleft)
+            }
+          } #block 3 + finish
+          nstart<-min(sum(!is.na(nn))+1,interimn)
+        }
+
+        assign1b<-assign11[max((index21[i-1]+1),cumuindex1+1):N2,]
+        assign1c<-assign1b[ assign1b$arm %in% armlabel1,]
+        cumuindex<-assign1b[ assign1b$arm %in% armlabel1,'index']
+
+        if (index21[i]==N2|index21[i]==index21[i-1]+nrow(assign1c)){
+          nn[is.na(nn)]=min(nnn*length(armleft),index21[i]-sum(nn[!is.na(nn)]))
+        }
+        nn1<-cumsum(nn)
+
+        if ((index21[i]-index21[i-1])>=nrow(assign1c)){
+
+          if ((index21[i-1]+nrow(assign1c))>=(index21[i-1]+1)){
+            data1[(index21[i-1]+1):(index21[i-1]+nrow(assign1c)),4]<-assign1c$arm
+            index2[i]<-nrow(assign1c)
+            index21<-cumsum(index2)
+            if (!is.na (nn1[interimn])){
+              if (nn1[interimn]>max(index21,na.rm=T) ){
+                nn1[interimn]<-max(index21,na.rm=T)
+                nn[interimn]<-nn1[interimn]-nn1[interimn-1]
+              }
+            }
+          }else{
+            index2[i]<-0
+            index21<-cumsum(index2)
+            if (!is.na (nn1[interimn])){
+              if (nn1[interimn]>max(index21,na.rm=T) ){
+                nn1[interimn]<-max(index21,na.rm=T)
+                nn[interimn]<-nn1[interimn]-nn1[interimn-1]
+              }
+            }
+          }
+          if (!is.na (nn1[interimn])){
+            stopp<-1
+          }
+
+        }else if ((index21[i]-index21[i-1])<nrow(assign1c)){
+          data1[(index21[i-1]+1):index21[i],4]<-assign1c$arm[1:(index21[i]-index21[i-1])]
+          cumuindex1<-cumuindex[(index21[i]-index21[i-1])]
+        }
+
+        if (index21[i-1]!=index21[i]) {
+          for (jj in 1:armn) {
+            for (n in ((index21[i-1]+1):min(index21[i],index21[i-1]+nrow(assign1c)))){
+              if ( data1[n, 4]==sprintf("Arm %s",jj) ){
+                data1[n,5]<-rbinom(1,size=1,prob=h[[jj]])
+              }
+            }
+          }
+        }
+
+      }else if(stopp==0 &  index21[1]<N2 & index21[1]>(nnn*2*armn) & index21[1]<(nnn*3*armn) & interimn==4 ){ #nstart<interimn &
+      #  print('bb')
+
+        if (i==2){
+          nn[2]=nnn*armn
+          nstart=3
+        }
+
+        if ((nnn*nstart*armn)>=(index21[i-1]+1)){
+          assign1a<-assign11[max((index21[i-1]+1),cumuindex1+1):(nnn*nstart*armn),]
+          assign1<-assign1a[ assign1a$arm %in% armlabel1,]
+        } else{
+          assign1<-data.frame()
+        }
+
+        if (i==3 & nstart==3 & is.na(nn[i]) & nnup==0){
+          nn[i]=index21[i-1]-sum(nn[1:(i-1)])+nrow(assign1)
+          nstart=4
+        }
+
+        if (i==4 & nstart==4 & nnup>0){
+          nn[i]=index21[i-1]-sum(nn[1:(i-1)])+nrow(assign1)
+        }
+
+        if (i==3 & nstart==3 & nnup>0){
+          nn[i]=index21[i-1]-sum(nn[1:(i-1)])+nrow(assign1)
+          nstart=4
+        }
+
+        index1<- max(as.numeric(data1[1:(sum(nn[1:nstart],na.rm=TRUE)),3]))
+        index2[i]<-min(nrow(data1[as.numeric(data1[,2])<=as.numeric(index1),])-index21[i-1],
+                       nrow(assign1)+nnn*(interimn-nstart)*length(armleft) )
+
+        index21<-cumsum(index2)
+
+
+        if (i==2 & index2[i]>=nrow(assign1)){
+          nn[3]=(index21[i-1]+nrow(assign1))-sum(nn[1:2])
+          nstart=4 # to block 4
+        }
+
+        if (i==3 & nstart==3 &  index2[i]==nrow(assign1)+nnn*length(armleft)){
+          nn[4]=nnn*length(armleft)# finish
+          stopp=1
+        } else if (i==3 & nstart==4 & index2[i]==nrow(assign1) & index2[i]>0){
+          nn[4]=(index21[i-1]+nrow(assign1))-sum(nn[1:3],na.rm=TRUE) #finish
+        } else if (i==3 & nstart==4 & index2[i]<nrow(assign1)){
+          nnup=(index21[i-1]+nrow(assign1))-sum(nn[1:3],na.rm=TRUE) #finish
+        } else if (i==3 & nstart==4 & index2[i]==nrow(assign1)  & index2[i]==0){
+          nnup=(index21[i-1]+nrow(assign1))-sum(nn[1:3],na.rm=TRUE) #finish
+        } else if (i==2 & nstart==3 & index2[i]<nrow(assign1)){
+          nnup=(index21[i-1]+nrow(assign1))-sum(nn[1:2],na.rm=TRUE) #finish
+        }
+
+        if (i==4 ){
+          nn[i]=(index21[i-1]+nrow(assign1))-sum(nn[1:3],na.rm=TRUE)
+        }
+
+
+        if (index2[i]>=(nrow(assign1)+nnn*length(armleft))){
+          for (ii in 1:(interimn-i)){
+            if (index2[i]<(nrow(assign1)+nnn*length(armleft)*ii)){
+              ii1=ii-1
+              break
+            }else if (index2[i]==(nrow(assign1)+nnn*length(armleft)*ii)){
+              ii1=ii
+              break
+            }
+          }
+
+          for (iii in 1:ii1){
+            if ((nstart+iii)<=interimn){
+              nn[nstart+iii]=nnn*length(armleft)
+            }
+          } #block 3 + finish
+          nstart<-min(sum(!is.na(nn))+1,interimn)
+        }
+
+        assign1b<-assign11[(index21[i-1]+1):N2,]
+        assign1c<-assign1b[ assign1b$arm %in% armlabel1,]
+        cumuindex<-assign1b[ assign1b$arm %in% armlabel1,'index']
+
+        if (index21[i]==N2|index21[i]==index21[i-1]+nrow(assign1c)){
+          nn[is.na(nn)]=nnn*length(armleft)
+        }
+        nn1<-cumsum(nn)
+
+        if ((index21[i]-index21[i-1])>=nrow(assign1c)){
+
+          if ((index21[i-1]+nrow(assign1c))>=(index21[i-1]+1)){
+
+            data1[(index21[i-1]+1):(index21[i-1]+nrow(assign1c)),4]<-assign1c$arm
+            index2[i]<-nrow(assign1c)
+            index21<-cumsum(index2)
+
+            if (!is.na (nn1[interimn])){
+              if (nn1[interimn]>max(index21,na.rm=T) ){
+                nn1[interimn]<-max(index21,na.rm=T)
+                nn[interimn]<-nn1[interimn]-nn1[interimn-1]
+              }
+            }
+          }else{
+
+            index2[i]<-0
+            index21<-cumsum(index2)
+
+            if (!is.na (nn1[interimn])){
+              if (nn1[interimn]>max(index21,na.rm=T) ){
+                nn1[interimn]<-max(index21,na.rm=T)
+                nn[interimn]<-nn1[interimn]-nn1[interimn-1]
+              }
+            }
+          }
+          if (!is.na (nn1[interimn])){
+            stopp<-1
+          }
+
+        }else if ((index21[i]-index21[i-1])<nrow(assign1c)){
+          data1[(index21[i-1]+1):index21[i],4]<-assign1c$arm[1:(index21[i]-index21[i-1])]
+          cumuindex1<-cumuindex[(index21[i]-index21[i-1])]
+        }
+
+        if (index21[i-1]!=index21[i]) {
+          for (jj in 1:armn) {
+            for (n in ((index21[i-1]+1):index21[i])){
+              if ( data1[n, 4]==sprintf("Arm %s",jj) ){
+                data1[n,5]<-rbinom(1,size=1,prob=h[[jj]])
+              }
+            }
+          }
+        }
+      }else if(stopp==0 &  index21[1]<N2 & index21[1]==(nnn*2*armn) & interimn==4 ){ #nstart<interimn &
+        #print('cc')
+        if (i==2){
+          nn[i]=nnn*armn
+          nstart=3
+        }
+
+        # if (i==3 & is.na(nn[i])){
+        #   nn[i]=nnn*length(armleft)
+        #   nstart=4
+        # }
+
+
+        if ((nnn*nstart*armn)>=(index21[i-1]+1)){
+          assign1a<-assign11[max((index21[i-1]+1),cumuindex1+1):(nnn*nstart*armn),]
+          assign1<-assign1a[ assign1a$arm %in% armlabel1,]
+        } else{
+          assign1<-data.frame()
+        }
+
+        if (nrow(assign1)>=nnn*length(armleft) & nrow(assign1)<2*nnn*length(armleft)){
+          nn[nstart]=nnn*length(armleft)
+          nstart=min(sum(!is.na(nn))+1,interimn)
+        } # else nstart not change
+
+        if  (nnup>0 & i!=2 & i==nstart & is.na(nn[nstart])){
+          nn[i]=(index21[i-1]+nrow(assign1))-max(nn1,na.rm=TRUE)
+          nstart<-min(sum(!is.na(nn))+1,interimn)
+        } else if (nnup==0  & nstart>i & !is.na(nn[i]) & is.na(nn[nstart])) {
+          nnup=(index21[i-1]+nrow(assign1))-max(nn1,na.rm=TRUE)
+        }#& i!=2
+
+        if (nrow(assign1)>=nnn*length(armleft) & nrow(assign1)==2*nnn*length(armleft)){
+          nn[3]=nnn*length(armleft)
+          nn[4]=nnn*length(armleft)
+          nstart=interimn
+        }
+
+
+        index1<- max(as.numeric(data1[1:(sum(nn[1:i])),3]))
+        index2[i]<-min(nrow(data1[as.numeric(data1[,2])<=as.numeric(index1),])-index21[i-1],
+                       nrow(assign1)+nnn*(interimn-nstart)*length(armleft) )
+        index21<-cumsum(index2)
+
+        if (index2[i]>=(nrow(assign1)+nnn*length(armleft))){
+          for (ii in 1:(interimn-i)){
+            if (index2[i]<(nrow(assign1)+nnn*length(armleft)*ii)){
+              ii1=ii-1
+              break
+            }else if (index2[i]==(nrow(assign1)+nnn*length(armleft)*ii)){
+              ii1=ii
+              break
+            }
+          }
+
+          for (iii in 1:ii1){
+            if ((nstart+iii)<=interimn){
+              nn[nstart+iii]=nnn*length(armleft)
+            }
+          }
+          nstart<-min(sum(!is.na(nn))+1,interimn)
+        }
+
+        assign1b<-assign11[(index21[i-1]+1):N2,]
+        assign1c<-assign1b[ assign1b$arm %in% armlabel1,]
+        cumuindex<-assign1b[ assign1b$arm %in% armlabel1,'index']
+
+        if (index21[i]==N2|index21[i]==index21[i-1]+nrow(assign1c)){
+          nn[is.na(nn)]=nnn*length(armleft)
+        }
+        nn1<-cumsum(nn)
+
+        if ((index21[i]-index21[i-1])>=nrow(assign1c)){
+
+          if ((index21[i-1]+nrow(assign1c))>=(index21[i-1]+1)){
+            data1[(index21[i-1]+1):(index21[i-1]+nrow(assign1c)),4]<-assign1c$arm
+            index2[i]<-nrow(assign1c)
+            index21<-cumsum(index2)
+            if (!is.na (nn1[interimn])){
+              if (nn1[interimn]>max(index21,na.rm=T) ){
+                nn1[interimn]<-max(index21,na.rm=T)
+                nn[interimn]<-nn1[interimn]-nn1[interimn-1]
+              }
+            }
+          }else{
+            index2[i]<-0
+            index21<-cumsum(index2)
+            if (!is.na (nn1[interimn])){
+              if (nn1[interimn]>max(index21,na.rm=T) ){
+                nn1[interimn]<-max(index21,na.rm=T)
+                nn[interimn]<-nn1[interimn]-nn1[interimn-1]
+              }
+            }
+          }
+          if (!is.na (nn1[interimn])){
+            stopp<-1
+          }
+        }else if ((index21[i]-index21[i-1])<nrow(assign1c)){
+          data1[(index21[i-1]+1):index21[i],4]<-assign1c$arm[1:(index21[i]-index21[i-1])]
+          cumuindex1<-cumuindex[(index21[i]-index21[i-1])]
+        }
+
+        for (jj in 1:armn) {
+          for (n in ((index21[i-1]+1):index21[i])){
+            if ( data1[n, 4]==sprintf("Arm %s",jj) ){
+              data1[n,5]<-rbinom(1,size=1,prob=h[[jj]])
+            }
+          }
+        }
+
+      }else if(stopp==0 &  index21[1]<N2 & index21[1]>=(nnn*3*armn) & interimn==4 ){
+       # print('dd')
+        nn[2]=nnn*armn
+        nn[3]=nnn*armn
+        nstart=4
+        if ((nnn*nstart*armn)>=(index21[i-1]+1)){
+          assign1a<-assign11[max((index21[i-1]+1),cumuindex1+1):(nnn*nstart*armn),]
+          assign1<-assign1a[ assign1a$arm %in% armlabel1,]
+        } else{
+          assign1<-data.frame()
+        }
+
+        index1<- max(as.numeric(data1[1:(sum(nn[1:i])),3]))
+
+        index2[i]<-min(nrow(data1[as.numeric(data1[,2])<=as.numeric(index1),])-index21[i-1],
+                       nrow(assign1)+nnn*(interimn-nstart)*length(armleft) )
+
+        index21<-cumsum(index2)
+
+        nn[4]=(index21[i-1]+nrow(assign1))-sum(nn[1:3])
+
+        assign1b<-assign11[(index21[i-1]+1):N2,]
+        assign1c<-assign1b[ assign1b$arm %in% armlabel1,]
+        cumuindex<-assign1b[ assign1b$arm %in% armlabel1,'index']
+
+        if (index21[i]==N2|index21[i]==index21[i-1]+nrow(assign1c)){
+          nn[is.na(nn)]=nnn*length(armleft)
+        }
+        nn1<-cumsum(nn)
+
+        if ((index21[i]-index21[i-1])>=nrow(assign1c)){
+
+          if ((index21[i-1]+nrow(assign1c))>=(index21[i-1]+1)){
+            data1[(index21[i-1]+1):(index21[i-1]+nrow(assign1c)),4]<-assign1c$arm
+            index2[i]<-nrow(assign1c)
+            index21<-cumsum(index2)
+            if (!is.na (nn1[interimn])){
+              if (nn1[interimn]>max(index21,na.rm=T) ){
+                nn1[interimn]<-max(index21,na.rm=T)
+                nn[interimn]<-nn1[interimn]-nn1[interimn-1]
+              }
+            }
+          }else{
+            index2[i]<-0
+            index21<-cumsum(index2)
+            if (!is.na (nn1[interimn])){
+              if (nn1[interimn]>max(index21,na.rm=T) ){
+                nn1[interimn]<-max(index21,na.rm=T)
+                nn[interimn]<-nn1[interimn]-nn1[interimn-1]
+              }
+            }
+          }
+          if (!is.na (nn1[interimn])){
+            stopp<-1
+          }
+
+        }else if ((index21[i]-index21[i-1])<nrow(assign1c)){
+          data1[(index21[i-1]+1):index21[i],4]<-assign1c$arm[1:(index21[i]-index21[i-1])]
+          cumuindex1<-cumuindex[(index21[i]-index21[i-1])]
+        }
+
+        for (jj in 1:armn) {
+          for (n in ((index21[i-1]+1):index21[i])){
+            if ( data1[n, 4]==sprintf("Arm %s",jj) ){
+              data1[n,5]<-rbinom(1,size=1,prob=h[[jj]])
+            }
+          }
+        }
+
+
+      } else if(stopp==0 &  index21[1]<N2 & index21[1]<=(nnn*2*armn) & interimn==3 ){
+
+        if ((nnn*nstart*armn)>=(index21[i-1]+1)){
+          assign1a<-assign11[max((index21[i-1]+1),cumuindex1+1):(nnn*nstart*armn),]
+          assign1<-assign1a[ assign1a$arm %in% armlabel1,]
+        } else{
+          assign1<-data.frame()
+        }
+
+        nn[i]=(index21[i-1]+nrow(assign1))-max(nn1,na.rm=TRUE)
+
+        index1<- max(as.numeric(data1[1:(sum(nn[1:i])),3]))
+
+        index2[i]<-min(nrow(data1[as.numeric(data1[,2])<=as.numeric(index1),])-index21[i-1],
+                       nrow(assign1)+nnn*(interimn-i)*length(armleft) )
+
+        if (index2[i]>=(nrow(assign1)+nnn*length(armleft))){
+          for (ii in 1:(interimn-i)){
+            if (index2[i]<(nrow(assign1)+nnn*length(armleft)*ii)){
+              ii1=ii-1
+              break
+            }else if (index2[i]==(nrow(assign1)+nnn*length(armleft)*ii)){
+              ii1=ii
+              break
+            }
+          }
+
+          for (iii in 1:ii1){
+            if ((nstart+iii)<=interimn){
+              nn[nstart+iii]=nnn*length(armleft)
+            }
+          }
+          nstart<-min(sum(!is.na(nn))+1,interimn)
+        }else{
+          nstart=i+1
+        }
+
+        index21<-cumsum(index2)
+
+        assign1b<-assign11[(index21[i-1]+1):N2,]
+        assign1c<-assign1b[ assign1b$arm %in% armlabel1,]
+        cumuindex<-assign1b[ assign1b$arm %in% armlabel1,'index']
+
+
+        if (index21[i]==N2|index21[i]==index21[i-1]+nrow(assign1c)){
+          nn[is.na(nn)]=nnn*length(armleft)
+        }
+        nn1<-cumsum(nn)
+
+        if ((index21[i]-index21[i-1])>=nrow(assign1c)){
+
+          if ((index21[i-1]+nrow(assign1c))>=(index21[i-1]+1)){
+            data1[(index21[i-1]+1):(index21[i-1]+nrow(assign1c)),4]<-assign1c$arm
+            index2[i]<-nrow(assign1c)
+            index21<-cumsum(index2)
+            if (!is.na (nn1[interimn])){
+              if (nn1[interimn]>max(index21,na.rm=T) ){
+                nn1[interimn]<-max(index21,na.rm=T)
+                nn[interimn]<-nn1[interimn]-nn1[interimn-1]
+              }
+            }
+          }else{
+            index2[i]<-0
+            index21<-cumsum(index2)
+            if (!is.na (nn1[interimn])){
+              if (nn1[interimn]>max(index21,na.rm=T) ){
+                nn1[interimn]<-max(index21,na.rm=T)
+                nn[interimn]<-nn1[interimn]-nn1[interimn-1]
+              }
+            }
+          }
+          if (!is.na (nn1[interimn])){
+            stopp<-1
+          }
+
+        }else if ((index21[i]-index21[i-1])<nrow(assign1c)){
+          data1[(index21[i-1]+1):index21[i],4]<-assign1c$arm[1:(index21[i]-index21[i-1])]
+          cumuindex1<-cumuindex[(index21[i]-index21[i-1])]
+        }
+
+        for (jj in 1:armn) {
+          for (n in ((index21[i-1]+1):index21[i])){
+            if ( data1[n, 4]==sprintf("Arm %s",jj) ){
+              data1[n,5]<-rbinom(1,size=1,prob=h[[jj]])
+            }
+          }
+        }
+
+      }   else if (stopp==0 &  index21[1]<N2 & index21[1]>(nnn*2*armn) & index21[1]<(nnn*3*armn) & interimn==3){
+
+        if (i==2){
+          nn[2]=nnn*armn
+          nstart=3
+        }
+
+        if ((nnn*nstart*armn)>=(index21[i-1]+1)){
+          assign1a<-assign11[max((index21[i-1]+1),cumuindex1+1):(nnn*nstart*armn),]
+          assign1<-assign1a[ assign1a$arm %in% armlabel1,]
+        } else{
+          assign1<-data.frame()
+        }
+        if (i==2){
+          index1<- max(as.numeric(data1[1:(sum(nn[1:i])),3]))
+          index2[i]<-min(nrow(data1[as.numeric(data1[,2])<=as.numeric(index1),])-index21[i-1],
+                         nrow(assign1))
+        } else if (i==3){
+          nn[3]=(index21[i-1]+nrow(assign1))-sum(nn[1:2])
+          stopp=1
+          index1<- max(as.numeric(data1[1:(sum(nn[1:i])),3]))
+          index2[i]<-min(nrow(data1[as.numeric(data1[,2])<=as.numeric(index1),])-index21[i-1],
+                         nrow(assign1))
+
+        }
+        if (i==2 & index2[i]==nrow(assign1)){
+          nn[3]=(index21[i-1]+nrow(assign1))-sum(nn[1:2])
+          stopp=1
+        }
+
+
+        index21<-cumsum(index2)
+        assign1b<-assign11[(index21[i-1]+1):N2,]
+        assign1c<-assign1b[ assign1b$arm %in% armlabel1,]
+        data1[(index21[i-1]+1):index21[i],4]<-assign1c$arm[1:(index21[i]-index21[i-1])]
+
+        if (index21[i]==N2|index21[i]==index21[i-1]+nrow(assign1c)){
+          nn[is.na(nn)]=nnn*length(armleft)
+        }
+        nn1<-cumsum(nn)
+
+        for (jj in 1:armn) {
+          for (n in ((index21[i-1]+1):index21[i])){
+            if ( data1[n, 4]==sprintf("Arm %s",jj) ){
+              data1[n,5]<-rbinom(1,size=1,prob=h[[jj]])
+            }
+          }
+        }
+
+
+      }   else   if ( stopp==0 & index21[1]<N2 & interimn==2){
+
+        assign1a<-assign11[max((index21[i-1]+1),cumuindex1+1):(nnn*nstart*armn),]
+        assign1<-assign1a[ assign1a$arm %in% armlabel1,]
+        nn[2]=(index21[i-1]+nrow(assign1))-sum(nn[1])
+
+        nn1<-cumsum(nn)
+
+        index2[i]<-nrow(assign1)+nnn*(interimn-nstart)*length(armleft)
+        index21<-cumsum(index2)
+        stopp=1
+
+        assign1b<-assign11[(index21[i-1]+1):N2,]
+        assign1c<-assign1b[ assign1b$arm %in% armlabel1,]
+        data1[(index21[i-1]+1):index21[i],4]<-assign1c$arm[1:(index21[i]-index21[i-1])]
+
+        for (jj in 1:armn) {
+          for (n in ((index21[i-1]+1):index21[i])){
+            if ( data1[n, 4]==sprintf("Arm %s",jj) ){
+              data1[n,5]<-rbinom(1,size=1,prob=h[[jj]])
+            }
+          }
+        }
+
+
+      }
+
+
+    }
+
+    # print('ha')
+    # print(nn1)
+    # print(index21)
+
+    dataa<-data1[1:max(nn1[1:i]),]
+    dataaa<-data1[1:max(index21[1:i],na.rm = TRUE),]
+
+
+    treatalive1<- lapply(armleft,function(x) {sum(as.numeric(dataa[dataa[,4]==sprintf("Arm %s",x),5]))})
+    aliveratenum1<-c( unlist(treatalive1))
+    treatalive2<- lapply(armleft,function(x) {length(as.numeric(dataa[dataa[,4]==sprintf("Arm %s",x),5]))})
+    aliveratenum2<-c( unlist(treatalive2))
+    treatalive<- lapply(armleft,function(x) {as.numeric(dataa[dataa[,4]==sprintf("Arm %s",x),5])})
+    tinterimalivesum<-mapply(FUN = `/`, lapply(treatalive, function(x) sum(x)), lapply(treatalive, function(x) length(x)), SIMPLIFY = FALSE)
+    aliverate<-c( unlist(tinterimalivesum))
+    interimrealnumber <-as.data.frame(matrix(aliverate[2:length(armleft)]-aliverate[1],nrow=1))
+    colnames(interimrealnumber)<- armleft[2:length(armleft)]
+    for (hh in (armleft[2:length(armleft)])) {
+      sss1<-which(armleft %in% hh)
+      zz[[hh]]<-interimrealnumber[colnames(interimrealnumber) %in% hh]/sqrt(#2*
+        ((aliveratenum2[sss1]*aliverate[sss1]+aliveratenum2[1]*aliverate[1])/(aliveratenum2[sss1]+aliveratenum2[1]))*
+          (1-((aliveratenum2[sss1]*aliverate[sss1]+aliveratenum2[1]*aliverate[1])/(aliveratenum2[sss1]+aliveratenum2[1])))*
+          (1/aliveratenum2[1] +1/aliveratenum2[sss1]))
+    }
+    # ##print(aliverate)
+    # ##print(armleft)
+    # ##print(decision)
+    # ##print(aliveratenum2)
+    # ##print(aliverate)
+    for (s in (armleft[2:length(armleft)])) {
+      sss<-which(armleft %in% s)
+      compare[[s]]<-cbind(c(i),
+                          (seqBoundary(binomialfixsamplesize[[2]])[,4][i]*sqrt(#2*
+                            ((aliveratenum2[sss]*aliverate[sss]+aliveratenum2[1]*aliverate[1])/(aliveratenum2[sss]+aliveratenum2[1]))*
+                              (1-((aliveratenum2[sss]*aliverate[sss]+aliveratenum2[1]*aliverate[1])/(aliveratenum2[sss]+aliveratenum2[1])))*
+                              (1/aliveratenum2[1] +1/aliveratenum2[sss]))),
+                          (seqBoundary(binomialfixsamplesize[[2]])[,1][i]*sqrt(#2*
+                            ((aliveratenum2[sss]*aliverate[sss]+aliveratenum2[1]*aliverate[1])/(aliveratenum2[sss]+aliveratenum2[1]))*
+                              (1-((aliveratenum2[sss]*aliverate[sss]+aliveratenum2[1]*aliverate[1])/(aliveratenum2[sss]+aliveratenum2[1])))*
+                              (1/aliveratenum2[1] +1/aliveratenum2[sss]))),
+                          c(interimrealnumber[colnames(interimrealnumber) %in% s]))
+      # ##print(compare)
+      colnames(compare[[s]])<-c('interim analysis',  'efficacy boundary', 'futility boundary','real result')
+      #
+      if( (i<interimn & unlist(compare[[s]][1,4])<=unlist(compare[[s]][1,3])) |
+          (i==interimn & unlist(compare[[s]][1,4])<unlist(compare[[s]][1,3]))){
+        interimoutput[s,1]<-unlist(compare[[s]][1,1])
+        decision[s,1]<-1 #stop for futility #ineffective drug
+        stopseq[s,1]<-i
+        armleft<-armleft[! armleft %in% s]
+        armlabel1<-armlabel1[! armlabel1 %in%  sprintf("Arm %s",s)]
+        controlnum[[s]]<-nrow(dataaa[dataaa[,4]==sprintf("Arm %s",1),]  )
+        zzf[s,1]<-as.numeric(unlist(zz[[s]]))
+      }else if ( unlist(compare[[s]][1,4])>=unlist(compare[[s]][1,2])) {
+
+        interimoutput[s,1]<-unlist(compare[[s]][1,1])
+        decision[s,1]<-2 #stop for efficacy #promising drug
+        stopseq[s,1]<-i
+        effstop=1
+        controlnum[[s]]<-nrow(dataaa[dataaa[,4]==sprintf("Arm %s",1),]  )
+
+        zzf[s,1]<-ifelse(is.na(zzf[s,1]),as.numeric(unlist(zz[[s]])),zzf[s,1])
+      }
+
+    }
+
+    if(length(armleft)==1){
+
+      for (t in which(is.na(decision))){
+        controlnum[[t]]<-controlnum[[max(which(decision==1))]]
+        stopseq[t,1]<-stopseq[max(which(decision==1)),1]
+        decision[t,1]<-0
+        # ##print(t)
+        # ##print(zzf)
+        # ##print(zz)
+        zzf[t,1]<-ifelse(is.na(zzf[t,1]),as.numeric(unlist(zz[[t]])),zzf[t,1])
+      }
+      #   break
+    }
+    if (effstop==1) {
+      for (t in which(is.na(decision))){
+
+        controlnum[[t]]<-controlnum[[which(decision==2)[1]]]
+        stopseq[t,1]<-stopseq[which(decision==2)[1],1]
+        decision[t,1]<-0
+      }
+
+      #   break
+    }
+   # print(decision)
+    if(length(armleft)==1|effstop==1){
+      break
+    }
+  }
+
+  dataa1<- data1[1:max(index21,na.rm=TRUE),]
+  for (t in which(is.na(decision))){
+
+    controlnum[[t]]<-nrow( dataa1[ dataa1[,4]==sprintf("Arm %s",1),]  )
+    stopseq[t,1]<-interimn
+    decision[t,1]<-0
+  }
+
+  treat<-vector("list",armn)
+  treata<-vector("list",armn)
+  lengthh<-rep(NA,armn)
+  for (i in 1:armn){
+    treat[[i]]= dataa1[dataa1[,4]==sprintf("Arm %s",i),5]
+    treata[[i]]=treat[[i]]
+    lengthh[i]=nrow(dataa1[dataa1[,4]==sprintf("Arm %s",i),])
+  }
+
+  maxlength<-max(lengthh)
+  for (i in 1:armn){
+    length(treat[[i]])<-maxlength
+  }
+  clinicaltrial<-do.call(cbind,treat)
+  colnames(clinicaltrial)<-armlabel
+
+  controlnum1<-matrix(matrix(cbind(do.call(rbind,controlnum),as.vector(stopseq)),ncol=2)[2:armn,],ncol=2)
+  # ##print(decision)
+  # ##print(stopseq)
+  return(list(clinicaltrial,decision,stopseq,interimoutput,treata,dataa1,controlnum1,zzf))
+
+}
+
+
+simforfixed2<- function(j,x,arm,h,interimn,enrollrate,perct) {
+
+  stopseq<-sim1[[x]][[3]][2:arm,1]
+
+  clinicaltrial<-sim1[[x]][[1]]
+  controlnum<-sim1[[x]][[6]]
+  trtnumber1<-matrix(sapply(sim1[[x]][[5]],length))
+  trtnumber<-trtnumber1[-1,]
+  trt<-matrix(1:(arm-1))
+  decision<-sim1[[x]][[2]][2:arm,1]
+  zz0<-simnull[[j]][[x]][[8]]
+
+  stopdat<-as.data.frame(cbind(trt,trtnumber,stopseq,decision,sim1[[x]][[7]][,1]))
+  colnames(stopdat)<-c("realarm","number","stopseq","decision","controlnumber")
+  stopdat<-stopdat[with(stopdat, order(stopseq, decision)),]
+
+  neff<-nrow(subset(stopdat,stopdat$decision==2))
+  stoptrial<-lapply(unique(stopdat$stopseq),function(x) {
+    sum(subset(stopdat,stopdat$stopseq<=x)$number)+subset(stopdat,stopdat$stopseq==x)$controlnumber[1]
+  })
+
+  population<-sim11[[j]][[x]][[1]]
+  enrollinpopulation<-as.numeric(sim1[[x]][[6]][,2])
+  enrollinpopulation1<-as.numeric(sim1[[x]][[6]][,3])
+
+  maxstop<-max(stopdat$stopseq)
+  stopindex<-vector('list',length(stoptrial))
+  if (maxstop!=interimn){
+    stopindex<- lapply(1:length(stoptrial),function(x){
+      for (v in 1:(length(population))) {
+        if (all.equal(population[v],max(c(enrollinpopulation[stoptrial[[x]]],enrollinpopulation1[1:stoptrial[[x]]]),na.rm=TRUE))==TRUE){
+          return(v)
+          break
+        } else if (population[v]>max(c(enrollinpopulation[stoptrial[[x]]],enrollinpopulation1[1:stoptrial[[x]]]),na.rm=TRUE)){
+          return(v-1)
+          break
+        }
+
+      }
+    })
+
+
+  }else if (maxstop==interimn){
+
+    stopindex11<- function(x){
+      for (v in 1:(length(population))) {
+        if (all.equal(population[v],max(c(enrollinpopulation[stoptrial[[x]]],enrollinpopulation1[1:stoptrial[[x]]]),na.rm=TRUE))==TRUE){
+          return(v)
+          break
+        } else if (population[v]>max(c(enrollinpopulation[stoptrial[[x]]],enrollinpopulation1[1:stoptrial[[x]]]),na.rm=TRUE)){
+          return(v-1)
+          break
+        }
+        # if (all.equal(population[v],enrollinpopulation[stoptrial[[x]]])==TRUE){
+        #   return(v)
+        #   break
+        # }
+      }
+    }
+    stopindex12<-  function(x){
+      for (v in 1:(length(population))) {
+        if (population[v]>enrollinpopulation1[stoptrial[[x]]]){
+          return(v-1)
+          break
+        }
+      }
+    }
+    for(l in 1:length(stoptrial)){
+      if (l<length(stoptrial)) {
+        stopindex[[l]]<-stopindex11(l)
+      }else{
+        stopindex[[l]]<-stopindex12(l)
+      }
+    }
+  }
+
+  stoppop<- do.call(rbind,lapply(1:length(stoptrial),function(x){stopindex[[x]]-stoptrial[[x]]}))
+  percttot<-sum(perct)
+  percttot1<- (1-percttot)
+  patientintrial<- do.call(rbind,lapply(1:(arm-1),function(x) {stopdat$number[x]}))
+  controlintrial<-trtnumber1[1]
+  patientintrialt<-rbind(controlintrial,patientintrial)
+
+  if (stopindex[[length(stopindex)]]!=length(population)){stoppop<-c(stoppop,length(population)-stopindex[[length(stopindex)]])}
+
+  percttot2<-rep(0,length(unique(stopdat$stopseq)))
+
+  if (length(unique(stopdat$stopseq))>1){
+    for (i in 1:(length(unique(stopdat$stopseq))-1)) {
+      dat1<-subset(stopdat,stopdat$stopseq<=unique(stopdat$stopseq)[i])
+      dum1<-  as.numeric(subset(dat1,dat1$decision== 1)$realarm)+1
+      dum2<- subset(stopdat,stopdat$stopseq>unique(stopdat$stopseq)[i])$realarm
+      percttot2[which(unique(stopdat$stopseq)==unique(stopdat$stopseq)[as.numeric(i)+1])]= (sum(perct[dum1])/(length(dum2)+1))*
+        (stoppop[which(unique(stopdat$stopseq)==unique(stopdat$stopseq)[as.numeric(i)+1])]-
+           stoppop[which(unique(stopdat$stopseq)==unique(stopdat$stopseq)[as.numeric(i)])])
+    }
+  }
+  percttot21<-cumsum(percttot2)
+
+  patientinpopulation<-list()
+
+
+  for (i in unique(stopdat$stopseq)) {
+
+    indexdes<-subset(stopdat,stopdat$stopseq==i)$decision
+    duct<-length(subset(indexdes,indexdes==1|indexdes==0))
+    indexprp<-subset(stopdat,stopdat$stopseq==i)$realarm
+    indexprpa<-length(indexprp)-duct
+
+    # diff<-ifelse(indexprpa>0,(stoppop[length(stoppop)]-stoppop[length(stoppop)-1])/(indexprpa),0)
+    diff<-ifelse(indexprpa>0,(stoppop[length(stoppop)])/(indexprpa),0)
+    if (length(indexprp)!=1 & length(indexprp)>0){
+      patientinpopulationi1<-NULL
+      for (jj in 1:length(indexprp)) {
+        if (indexdes[jj]==2){
+          patientinpopulationi<-ceiling(perct[indexprp[jj]+1]*stoppop[which(unique(stopdat$stopseq)==i)]+diff+percttot21[which(unique(stopdat$stopseq)==i)])
+          patientinpopulationi1<-c(patientinpopulationi1,patientinpopulationi)
+
+        }else if (indexdes[jj]==1){
+          patientinpopulationi<-ceiling(perct[indexprp[jj]+1]*stoppop[which(unique(stopdat$stopseq)==i)]+percttot21[which(unique(stopdat$stopseq)==i)])
+          patientinpopulationi1<-c(patientinpopulationi1,patientinpopulationi)
+
+        }else if (indexdes[jj]==0){
+          patientinpopulationi<-ceiling(perct[indexprp[jj]+1]*stoppop[which(unique(stopdat$stopseq)==i)]+percttot21[which(unique(stopdat$stopseq)==i)])
+          patientinpopulationi1<-c(patientinpopulationi1,patientinpopulationi)
+        }
+      }
+
+
+      patientinpopulation[[i]]<-as.data.frame(patientinpopulationi1)
+      if (2 %in% indexdes ){break}
+    }else if(length(indexprp)==1) {
+      if (indexdes==2){
+        patientinpopulation[[i]]<-ceiling(perct[indexprp+1]*stoppop[which(unique(stopdat$stopseq)==i)]+diff+percttot21[which(unique(stopdat$stopseq)==i)])
+        break
+      }else if (indexdes==1){
+        patientinpopulation[[i]]<-ceiling(perct[indexprp+1]*stoppop[which(unique(stopdat$stopseq)==i)]+percttot21[which(unique(stopdat$stopseq)==i)])
+      }else if (indexdes==0){
+        patientinpopulation[[i]]<-ceiling(perct[indexprp+1]*stoppop[which(unique(stopdat$stopseq)==i)]+percttot21[which(unique(stopdat$stopseq)==i)])
+      }
+    }
+  }
+
+  patientinpopulation1<-as.data.frame(matrix(unlist(patientinpopulation),ncol=1))
+  colnames( patientinpopulation1)<-'patientinpopulation'
+  armseq<-subset(stopdat,select=c(realarm,stopseq))
+
+  dummy<-rep(0,nrow(stopdat))
+  patientinpopulation1<-cbind(armseq,patientinpopulation=sapply(1:length(dummy),function(x) {patientinpopulation1[x,]}))
+  patientinpopulation3<-as.data.frame(patientinpopulation1[order(patientinpopulation1$realarm),]$patientinpopulation)
+  colnames(patientinpopulation3)<-'patientinpopulation'
+
+  if (sum(decision==1)==(arm-1)){
+    controlinpopulation<-ceiling(perct[1]*max(stoppop[1:(length(stoppop)-1)])+max(percttot21)+(stoppop[length(stoppop)]))#-stoppop[length(stoppop)-1]))
+  }else if (sum(decision==2)>=1){
+    controlinpopulation<-ceiling(perct[1]*max(stoppop[1:(length(stoppop)-1)])+max(percttot21))
+  }
+  patientinpopulationt1<-as.matrix(c(controlinpopulation,unlist(patientinpopulation3)),ncol=1)
+
+  patientinpopulationt1[is.na(patientinpopulationt1)]<-0
+  # patientinpopulationt<-patientinpopulationt1/max(sum(stoppop[(length(stoppop)-1):(length(stoppop))]),sum( patientinpopulationt1))#-stoppop[length(stoppop)-1]
+  patientinpopulationt<-patientinpopulationt1/max(sum(max(stoppop[1:(length(stoppop)-1)]),(stoppop[length(stoppop)])),sum( patientinpopulationt1))
+
+  success <- aggregate(sim1[[x]][[6]][,5], by=list(sim1[[x]][[6]][,4],sim1[[x]][[6]][,5]), FUN=length)
+  successdummy<-data.frame(Group.1=rep(c('Arm 1','Arm 2','Arm 3'),2),Group.2=c(rep(0,arm),rep(1,arm)))
+  success1 <- merge(x = successdummy, y = success , by = c('Group.1', 'Group.2'), all.x=TRUE)
+  success2 <-lapply(split(success1, f = list(success1$Group.1 ,success1$Group.2) ), function(x) x[(names(x) %in% c("x"))])
+  success3 <-do.call(cbind,success2)
+  colnames(success3)<-names(success2)
+
+  return(list(patientinpopulationt,patientintrialt,max(as.numeric(sim1[[x]][[6]][,3])),neff,success3,zz0,sim1[[x]][[8]]))
+}
+
+total<-function(j,arm1,arm2,h,patha,perct1,perct2,perct3,repn,interimn,enrollrate1,totsamplesize=arm1*binomialfixsamplesize[[1]]/2){
+  patientinpopulation<-list()
+  patientintrial<-list()
+  decision<-list()
+  stopseq<-list()
+  stopseq0<-list()
+  triallength<-list()
+  h0decision<-list()
+  success<-list()
+  phi<-list()
+  phi0<-list()
+  for (i in 1:length(perctt1)) {
+    sim2<-lapply(1:repn,function(x) {
+      #  ##print(x)
+      simforfixed2(j=j,x=x,arm=arm1,h=h,interimn=interimn,perct=rlang::eval_tidy(perct1))})
+    patientinpopulation[[i]]<-t(sapply(sim2, "[[", 1))
+    patientintrial[[i]]<-  t(sapply(sim2, "[[", 2))
+    decision[[i]]<- t(sapply(sim1, "[[", 2))
+    stopseq[[i]]<- t(sapply(sim1, "[[", 3))
+    stopseq0[[i]]<- t(sapply(simnull[[j]], "[[", 3))
+    triallength[[i]]<- sapply(sim2, "[[", 3)
+    h0decision[[i]]<-t(sapply(simnull[[j]], "[[", 2))#t(sapply(simnull, "[[", 2))
+    success[[i]]<-t(sapply(sim2, "[[", 5))
+    phi[[i]]<- t(sapply(sim2, "[[", 7))[,2:arm1]
+    phi0[[i]]<- t(sapply(sim2, "[[", 6))[,2:arm1]
+  }
+
+  perctp1<-as.matrix(rep(sort(apply(as.data.frame(perct2), 2,function(x) {rep(x,length(perctt1))})),repn),ncol=1)
+  arm<-as.matrix(rep(sort(apply(as.data.frame(arm1), 2,function(x) {rep(x,length(perctt1))})),repn),ncol=1)
+
+  perctt<-do.call(cbind,lapply(1:(arm1-1), function(x) {
+    prop<-get(eval(sprintf("perctt%s",x)))
+    do.call(rbind,lapply(prop,function(x) {as.matrix(rep(x,repn),ncol=1)}))
+  }))
+
+  hypothesis<-do.call(cbind,lapply(h,function(x) {as.matrix(rep(x,repn*length(perctt1)),ncol=1)}))
+  sim22a<-do.call(rbind,patientinpopulation)
+  sim22b<-do.call(rbind,patientintrial)
+  decision<-do.call(rbind,decision)
+  h0decision<-do.call(rbind,h0decision)
+  stopseq<-do.call(rbind,stopseq)
+  stopseq0<-do.call(rbind,stopseq0)
+  triallength<-unlist(triallength)
+  success1<-do.call(rbind,success)
+  phi<-do.call(rbind, phi)#unlist(phi)#as.vector(t(do.call(rbind, phi)))
+  phi0<-do.call(rbind, phi0)#unlist(phi0)#as.vector(t(do.call(rbind, phi0)))
+
+  sim2<-cbind(arm,hypothesis,perctp1,perctt,sim22a,sim22b,decision,stopseq,triallength,enrollrate1,interimn,h0decision,totsamplesize,success1,phi,phi0,stopseq0)
+  colnames(sim2)<-c('arm',sprintf("hypothesisn%s",arm2),sprintf("proportion%s",arm2),sprintf("patientsinpopulation%s",arm2),sprintf("patientsintrial%s",arm2),
+                    sprintf("decision%s",arm2),sprintf("stopseq%s",arm2),'triallength','enrollrate','interimn',
+                    sprintf("h0decision%s",arm2),'totsamplesize',sprintf("success%s",colnames(success1)),sprintf("Phi%s",2:arm1),sprintf("Phi0%s",2:arm1),sprintf("stopseq0%s",arm2))
+
+  if (j==1){
+    write.table(sim2, patha, sep = ",", row.names = FALSE,col.names = TRUE)
+  }else{
+    write.table(sim2, patha, sep = ",", row.names = FALSE,col.names = FALSE, append = T)
+  }
+}
+
+
+
+####################Run before other code ############
+pop<-function(vPatsPerMonth,nMaxQtyPats,enrollrate1){
+  populationtotal<-SimulateArrivalTimes (vPatsPerMonth, nMaxQtyPats)
+
+  vStartTime1<-rbinom(nMaxQtyPats,size=1,enrollrate1)
+  vStartTime2<- cbind(vStartTime1,populationtotal)
+  vStartTime3<-vStartTime2[vStartTime2[,1]==1,]
+  return(list(populationtotal,length(populationtotal),as.vector(vStartTime3[,2])))
+}
+
+
+
+enrollratef<-c(0.1,0.5,0.9)
+perctp<-0.5
+perctt1<-c(0,0.1)
+perctt2<-c(0,0.1)
+perctt3<-c(0,0.1)
+perctt4<-c(0,0.1)
+####################
+sim11<-vector("list",length(enrollratef))
+for (j in (1:length(enrollratef))){
+  seeds<-1:1000
+  sim11[[j]]<-lapply(1:1000,function(x) {
+    set.seed(seeds[x])
+    pop(vPatsPerMonth=10,nMaxQtyPats=50000,enrollrate1=enrollratef[j])})
+}#if there are 5000 patients in the trial, how many patients will have disease in the population
+
+#########0.1,0.2,0.2,0.2,0.2
+binomialfixsamplesize<-simforfixed(h=c(0.1,0.2,0.2,0.2,0.2),interimn=4) #960
+
+simnull<-list()
+for (j in (1:length(enrollratef))){
+  seeds<-c(3*((j+j)*1000+3),3*((j+j+8)*1000+3),3*((j+j+3)*1000+3),3*((j+j+5)*1000+3),3*((j+j+7)*1000+3))
+  set.seed(seeds[1])
+  simnull[[j]]<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.1,0.1,0.1,0.1,0.1),interimn=4)
+  })
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3*((j+j)*1000+3),3*((j+j+8)*1000+3),3*((j+j+3)*1000+3),3*((j+j+5)*1000+3),3*((j+j+7)*1000+3))
+  set.seed(seeds[2])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.1,0.1,0.1,0.2,0.2),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.1,0.1,0.1,0.2,0.2),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_1_0_1_0_1_0_2_0_2.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3*((j+j)*1000+3),3*((j+j+8)*1000+3),3*((j+j+3)*1000+3),3*((j+j+5)*1000+3),3*((j+j+7)*1000+3))
+  set.seed(seeds[3])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.1,0.1,0.1,0.1,0.2),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.1,0.1,0.1,0.1,0.2),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_1_0_1_0_1_0_1_0_2.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3*((j+j)*1000+3),3*((j+j+8)*1000+3),3*((j+j+3)*1000+3),3*((j+j+5)*1000+3),3*((j+j+7)*1000+3))
+  set.seed(seeds[4])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.1,0.1,0.1,0.05,0.05),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.1,0.1,0.1,0.05,0.05),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_1_0_1_0_1_0_0_5_0_0_5.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3*((j+j)*1000+3),3*((j+j+8)*1000+3),3*((j+j+3)*1000+3),3*((j+j+5)*1000+3),3*((j+j+7)*1000+3))
+  set.seed(seeds[5])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.1,0.1,0.1,0.1,0.05),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.1,0.1,0.1,0.1,0.05),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_1_0_1_0_1_0_1_0_0_5.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+#########0.2,0.3,0.3,0.3,0.3
+binomialfixsamplesize<-simforfixed(h=c(0.2,0.3,0.3,0.3,0.3),interimn=4) #1428
+
+
+simnull<-list()
+for (j in (1:length(enrollratef))){
+  seeds<-c(32*((j+j)*1000+3),32*((j+j+8)*1000+3),32*((j+j+3)*1000+3),32*((j+j+5)*1000+3),32*((j+j+7)*1000+3),32*((j+j+9)*1000+3),32*((j+j+10)*1000+3))
+  set.seed(seeds[1])
+  simnull[[j]]<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.2,0.2,0.2,0.2,0.2),interimn=4)
+  })
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32*((j+j)*1000+3),32*((j+j+8)*1000+3),32*((j+j+3)*1000+3),32*((j+j+5)*1000+3),32*((j+j+7)*1000+3),32*((j+j+9)*1000+3),32*((j+j+10)*1000+3))
+  set.seed(seeds[2])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.2,0.2,0.2,0.3,0.3),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.2,0.2,0.2,0.3,0.3),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_2_0_2_0_2_0_3_0_3.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32*((j+j)*1000+3),32*((j+j+8)*1000+3),32*((j+j+3)*1000+3),32*((j+j+5)*1000+3),32*((j+j+7)*1000+3),32*((j+j+9)*1000+3),32*((j+j+10)*1000+3))
+  set.seed(seeds[3])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.2,0.2,0.2,0.2,0.3),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.2,0.2,0.2,0.2,0.3),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_2_0_2_0_2_0_2_0_3.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32*((j+j)*1000+3),32*((j+j+8)*1000+3),32*((j+j+3)*1000+3),32*((j+j+5)*1000+3),32*((j+j+7)*1000+3),32*((j+j+9)*1000+3),32*((j+j+10)*1000+3))
+  set.seed(seeds[4])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.2,0.2,0.2,0.1,0.1),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.2,0.2,0.2,0.1,0.1),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_2_0_2_0_2_0_1_0_1.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32*((j+j)*1000+3),32*((j+j+8)*1000+3),32*((j+j+3)*1000+3),32*((j+j+5)*1000+3),32*((j+j+7)*1000+3),32*((j+j+9)*1000+3),32*((j+j+10)*1000+3))
+  set.seed(seeds[5])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.2,0.2,0.2,0.2,0.1),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.2,0.2,0.2,0.2,0.1),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_2_0_2_0_2_0_2_0_1.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32*((j+j)*1000+3),32*((j+j+8)*1000+3),32*((j+j+3)*1000+3),32*((j+j+5)*1000+3),32*((j+j+7)*1000+3),32*((j+j+9)*1000+3),32*((j+j+10)*1000+3))
+  set.seed(seeds[6])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.2,0.2,0.2,0.4,0.4),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.2,0.2,0.2,0.4,0.4),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_2_0_2_0_2_0_4_0_4.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32*((j+j)*1000+3),32*((j+j+8)*1000+3),32*((j+j+3)*1000+3),32*((j+j+5)*1000+3),32*((j+j+7)*1000+3),32*((j+j+9)*1000+3),32*((j+j+10)*1000+3))
+  set.seed(seeds[7])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.2,0.2,0.2,0.2,0.4),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.2,0.2,0.2,0.2,0.4),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_2_0_2_0_2_0_2_0_4.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+#########0.3,0.4,0.4,0.4,0.4
+binomialfixsamplesize<-simforfixed(h=c(0.3,0.4,0.4,0.4,0.4),interimn=4) # 1728
+
+
+simnull<-list()
+for (j in (1:length(enrollratef))){
+  seeds<-c(323*((j+j)*1000+3),323*((j+j+8)*1000+3),323*((j+j+3)*1000+3),323*((j+j+5)*1000+3),323*((j+j+7)*1000+3),323*((j+j+9)*1000+3),323*((j+j+10)*1000+3))
+  set.seed(seeds[1])
+  simnull[[j]]<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.3,0.3,0.3,0.3,0.3),interimn=4)
+  })
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(323*((j+j)*1000+3),323*((j+j+8)*1000+3),323*((j+j+3)*1000+3),323*((j+j+5)*1000+3),323*((j+j+7)*1000+3),323*((j+j+9)*1000+3),323*((j+j+10)*1000+3))
+  set.seed(seeds[2])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.3,0.3,0.3,0.4,0.4),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.3,0.3,0.3,0.4,0.4),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_3_0_3_0_3_0_4_0_4.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(323*((j+j)*1000+3),323*((j+j+8)*1000+3),323*((j+j+3)*1000+3),323*((j+j+5)*1000+3),323*((j+j+7)*1000+3),323*((j+j+9)*1000+3),323*((j+j+10)*1000+3))
+  set.seed(seeds[3])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.3,0.3,0.3,0.3,0.4),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.3,0.3,0.3,0.3,0.4),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_3_0_3_0_3_0_3_0_4.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(323*((j+j)*1000+3),323*((j+j+8)*1000+3),323*((j+j+3)*1000+3),323*((j+j+5)*1000+3),323*((j+j+7)*1000+3),323*((j+j+9)*1000+3),323*((j+j+10)*1000+3))
+  set.seed(seeds[4])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.3,0.3,0.3,0.2,0.2),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.3,0.3,0.3,0.2,0.2),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_3_0_3_0_3_0_2_0_2.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(323*((j+j)*1000+3),323*((j+j+8)*1000+3),323*((j+j+3)*1000+3),323*((j+j+5)*1000+3),323*((j+j+7)*1000+3),323*((j+j+9)*1000+3),323*((j+j+10)*1000+3))
+  set.seed(seeds[5])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.3,0.3,0.3,0.3,0.2),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.3,0.3,0.3,0.3,0.2),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_3_0_3_0_3_0_3_0_2.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(323*((j+j)*1000+3),323*((j+j+8)*1000+3),323*((j+j+3)*1000+3),323*((j+j+5)*1000+3),323*((j+j+7)*1000+3),323*((j+j+9)*1000+3),323*((j+j+10)*1000+3))
+  set.seed(seeds[6])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.3,0.3,0.3,0.5,0.5),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.3,0.3,0.3,0.5,0.5),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_3_0_3_0_3_0_5_0_5.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(323*((j+j)*1000+3),323*((j+j+8)*1000+3),323*((j+j+3)*1000+3),323*((j+j+5)*1000+3),323*((j+j+7)*1000+3),323*((j+j+9)*1000+3),323*((j+j+10)*1000+3))
+  set.seed(seeds[7])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.3,0.3,0.3,0.3,0.5),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.3,0.3,0.3,0.3,0.5),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_3_0_3_0_3_0_3_0_5.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+#########0.4,0.5,0.5,0.5,0.5
+binomialfixsamplesize<-simforfixed(h=c(0.4,0.5,0.5,0.5,0.5),interimn=4) #1884
+
+
+simnull<-list()
+for (j in (1:length(enrollratef))){
+  seeds<-c(3232*((j+j)*1000+3),3232*((j+j+8)*1000+3),3232*((j+j+3)*1000+3),3232*((j+j+5)*1000+3),3232*((j+j+7)*1000+3),3232*((j+j+9)*1000+3),3232*((j+j+10)*1000+3),3*((j+j+9)*1000+3),3*((j+j+10)*1000+3))
+  set.seed(seeds[1])
+  simnull[[j]]<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.4,0.4,0.4,0.4,0.4),interimn=4)
+  })
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3232*((j+j)*1000+3),3232*((j+j+8)*1000+3),3232*((j+j+3)*1000+3),3232*((j+j+5)*1000+3),3232*((j+j+7)*1000+3),3232*((j+j+9)*1000+3),3232*((j+j+10)*1000+3),3*((j+j+9)*1000+3),3*((j+j+10)*1000+3))
+  set.seed(seeds[2])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.4,0.4,0.4,0.5,0.5),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.4,0.4,0.4,0.5,0.5),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_4_0_4_0_4_0_5_0_5.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3232*((j+j)*1000+3),3232*((j+j+8)*1000+3),3232*((j+j+3)*1000+3),3232*((j+j+5)*1000+3),3232*((j+j+7)*1000+3),3232*((j+j+9)*1000+3),3232*((j+j+10)*1000+3),3*((j+j+9)*1000+3),3*((j+j+10)*1000+3))
+  set.seed(seeds[3])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.4,0.4,0.4,0.4,0.5),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.4,0.4,0.4,0.4,0.5),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_4_0_4_0_4_0_4_0_5.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3232*((j+j)*1000+3),3232*((j+j+8)*1000+3),3232*((j+j+3)*1000+3),3232*((j+j+5)*1000+3),3232*((j+j+7)*1000+3),3232*((j+j+9)*1000+3),3232*((j+j+10)*1000+3),3*((j+j+9)*1000+3),3*((j+j+10)*1000+3))
+  set.seed(seeds[4])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.4,0.4,0.4,0.3,0.3),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.4,0.4,0.4,0.3,0.3),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_4_0_4_0_4_0_3_0_3.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3232*((j+j)*1000+3),3232*((j+j+8)*1000+3),3232*((j+j+3)*1000+3),3232*((j+j+5)*1000+3),3232*((j+j+7)*1000+3),3232*((j+j+9)*1000+3),3232*((j+j+10)*1000+3),3*((j+j+9)*1000+3),3*((j+j+10)*1000+3))
+  set.seed(seeds[5])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.4,0.4,0.4,0.4,0.3),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.4,0.4,0.4,0.4,0.3),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_4_0_4_0_4_0_4_0_3.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3232*((j+j)*1000+3),3232*((j+j+8)*1000+3),3232*((j+j+3)*1000+3),3232*((j+j+5)*1000+3),3232*((j+j+7)*1000+3),3232*((j+j+9)*1000+3),3232*((j+j+10)*1000+3),3*((j+j+9)*1000+3),3*((j+j+10)*1000+3))
+  set.seed(seeds[6])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.4,0.4,0.4,0.2,0.2),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.4,0.4,0.4,0.2,0.2),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_4_0_4_0_4_0_2_0_2.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3232*((j+j)*1000+3),3232*((j+j+8)*1000+3),3232*((j+j+3)*1000+3),3232*((j+j+5)*1000+3),3232*((j+j+7)*1000+3),3232*((j+j+9)*1000+3),3232*((j+j+10)*1000+3),3*((j+j+9)*1000+3),3*((j+j+10)*1000+3))
+  set.seed(seeds[7])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.4,0.4,0.4,0.4,0.2),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.4,0.4,0.4,0.4,0.2),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_4_0_4_0_4_0_4_0_2.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3232*((j+j)*1000+3),3232*((j+j+8)*1000+3),3232*((j+j+3)*1000+3),3232*((j+j+5)*1000+3),3232*((j+j+7)*1000+3),3232*((j+j+9)*1000+3),3232*((j+j+10)*1000+3),3*((j+j+9)*1000+3),3*((j+j+10)*1000+3))
+  set.seed(seeds[8])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.4,0.4,0.4,0.6,0.6),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.4,0.4,0.4,0.6,0.6),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_4_0_4_0_4_0_6_0_6.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3232*((j+j)*1000+3),3232*((j+j+8)*1000+3),3232*((j+j+3)*1000+3),3232*((j+j+5)*1000+3),3232*((j+j+7)*1000+3),3232*((j+j+9)*1000+3),3232*((j+j+10)*1000+3),3*((j+j+9)*1000+3),3*((j+j+10)*1000+3))
+  set.seed(seeds[9])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.4,0.4,0.4,0.4,0.6),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.4,0.4,0.4,0.4,0.6),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_4_0_4_0_4_0_4_0_6.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+#########0.5,0.6,0.6,0.6,0.6
+binomialfixsamplesize<-simforfixed(h=c(0.5,0.6,0.6,0.6,0.6),interimn=4) # 1884
+
+
+simnull<-list()
+for (j in (1:length(enrollratef))){
+  seeds<-c(32323*((j+j)*1000+3),32323*((j+j+8)*1000+3),32323*((j+j+3)*1000+3),32323*((j+j+5)*1000+3),32323*((j+j+7)*1000+3),32323*((j+j+9)*1000+3),32323*((j+j+10)*1000+3),331*((j+j)*1000+3),331*((j+j+8)*1000+3))
+  set.seed(seeds[1])
+  simnull[[j]]<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.5,0.5,0.5,0.5,0.5),interimn=4)
+  })
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32323*((j+j)*1000+3),32323*((j+j+8)*1000+3),32323*((j+j+3)*1000+3),32323*((j+j+5)*1000+3),32323*((j+j+7)*1000+3),32323*((j+j+9)*1000+3),32323*((j+j+10)*1000+3),331*((j+j)*1000+3),331*((j+j+8)*1000+3))
+  set.seed(seeds[2])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.5,0.5,0.5,0.6,0.6),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.5,0.5,0.5,0.6,0.6),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_5_0_5_0_5_0_6_0_6.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32323*((j+j)*1000+3),32323*((j+j+8)*1000+3),32323*((j+j+3)*1000+3),32323*((j+j+5)*1000+3),32323*((j+j+7)*1000+3),32323*((j+j+9)*1000+3),32323*((j+j+10)*1000+3),331*((j+j)*1000+3),331*((j+j+8)*1000+3))
+  set.seed(seeds[3])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.5,0.5,0.5,0.5,0.6),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.5,0.5,0.5,0.5,0.6),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_5_0_5_0_5_0_5_0_6.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32323*((j+j)*1000+3),32323*((j+j+8)*1000+3),32323*((j+j+3)*1000+3),32323*((j+j+5)*1000+3),32323*((j+j+7)*1000+3),32323*((j+j+9)*1000+3),32323*((j+j+10)*1000+3),331*((j+j)*1000+3),331*((j+j+8)*1000+3))
+  set.seed(seeds[4])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.5,0.5,0.5,0.4,0.4),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.5,0.5,0.5,0.4,0.4),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_5_0_5_0_5_0_4_0_4.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32323*((j+j)*1000+3),32323*((j+j+8)*1000+3),32323*((j+j+3)*1000+3),32323*((j+j+5)*1000+3),32323*((j+j+7)*1000+3),32323*((j+j+9)*1000+3),32323*((j+j+10)*1000+3),331*((j+j)*1000+3),331*((j+j+8)*1000+3))
+  set.seed(seeds[5])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.5,0.5,0.5,0.5,0.4),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.5,0.5,0.5,0.5,0.4),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_5_0_5_0_5_0_5_0_4.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32323*((j+j)*1000+3),32323*((j+j+8)*1000+3),32323*((j+j+3)*1000+3),32323*((j+j+5)*1000+3),32323*((j+j+7)*1000+3),32323*((j+j+9)*1000+3),32323*((j+j+10)*1000+3),331*((j+j)*1000+3),331*((j+j+8)*1000+3))
+  set.seed(seeds[6])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.5,0.5,0.5,0.3,0.3),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.5,0.5,0.5,0.3,0.3),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_5_0_5_0_5_0_3_0_3.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32323*((j+j)*1000+3),32323*((j+j+8)*1000+3),32323*((j+j+3)*1000+3),32323*((j+j+5)*1000+3),32323*((j+j+7)*1000+3),32323*((j+j+9)*1000+3),32323*((j+j+10)*1000+3),331*((j+j)*1000+3),331*((j+j+8)*1000+3))
+  set.seed(seeds[7])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.5,0.5,0.5,0.5,0.3),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.5,0.5,0.5,0.5,0.3),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_5_0_5_0_5_0_5_0_3.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32323*((j+j)*1000+3),32323*((j+j+8)*1000+3),32323*((j+j+3)*1000+3),32323*((j+j+5)*1000+3),32323*((j+j+7)*1000+3),32323*((j+j+9)*1000+3),32323*((j+j+10)*1000+3),331*((j+j)*1000+3),331*((j+j+8)*1000+3))
+  set.seed(seeds[8])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.5,0.5,0.5,0.7,0.7),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.5,0.5,0.5,0.7,0.7),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_5_0_5_0_5_0_7_0_7.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(32323*((j+j)*1000+3),32323*((j+j+8)*1000+3),32323*((j+j+3)*1000+3),32323*((j+j+5)*1000+3),32323*((j+j+7)*1000+3),32323*((j+j+9)*1000+3),32323*((j+j+10)*1000+3),331*((j+j)*1000+3),331*((j+j+8)*1000+3))
+  set.seed(seeds[9])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.5,0.5,0.5,0.5,0.7),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.5,0.5,0.5,0.5,0.7),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_5_0_5_0_5_0_5_0_7.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+#########0.6,0.7,0.7,0.7,0.7
+binomialfixsamplesize<-simforfixed(h=c(0.6,0.7,0.7,0.7,0.7),interimn=4) # 1728
+
+
+simnull<-list()
+for (j in (1:length(enrollratef))){
+  seeds<-c(3311*((j+j)*1000+3),3311*((j+j+8)*1000+3),3311*((j+j+3)*1000+3),3311*((j+j+5)*1000+3),3311*((j+j+7)*1000+3),3311*((j+j+9)*1000+3),3311*((j+j+10)*1000+3),331*((j+j+3)*1000+3),331*((j+j+5)*1000+3))
+  set.seed(seeds[1])
+  simnull[[j]]<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.6,0.6,0.6,0.6,0.6),interimn=4)
+  })
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3311*((j+j)*1000+3),3311*((j+j+8)*1000+3),3311*((j+j+3)*1000+3),3311*((j+j+5)*1000+3),3311*((j+j+7)*1000+3),3311*((j+j+9)*1000+3),3311*((j+j+10)*1000+3),331*((j+j+3)*1000+3),331*((j+j+5)*1000+3))
+  set.seed(seeds[2])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.6,0.6,0.6,0.7,0.7),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.6,0.6,0.6,0.7,0.7),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_6_0_6_0_6_0_7_0_7.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3311*((j+j)*1000+3),3311*((j+j+8)*1000+3),3311*((j+j+3)*1000+3),3311*((j+j+5)*1000+3),3311*((j+j+7)*1000+3),3311*((j+j+9)*1000+3),3311*((j+j+10)*1000+3),331*((j+j+3)*1000+3),331*((j+j+5)*1000+3))
+  set.seed(seeds[3])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.6,0.6,0.6,0.6,0.7),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.6,0.6,0.6,0.6,0.7),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_6_0_6_0_6_0_6_0_7.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3311*((j+j)*1000+3),3311*((j+j+8)*1000+3),3311*((j+j+3)*1000+3),3311*((j+j+5)*1000+3),3311*((j+j+7)*1000+3),3311*((j+j+9)*1000+3),3311*((j+j+10)*1000+3),331*((j+j+3)*1000+3),331*((j+j+5)*1000+3))
+  set.seed(seeds[4])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.6,0.6,0.6,0.5,0.5),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.6,0.6,0.6,0.5,0.5),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_6_0_6_0_6_0_5_0_5.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3311*((j+j)*1000+3),3311*((j+j+8)*1000+3),3311*((j+j+3)*1000+3),3311*((j+j+5)*1000+3),3311*((j+j+7)*1000+3),3311*((j+j+9)*1000+3),3311*((j+j+10)*1000+3),331*((j+j+3)*1000+3),331*((j+j+5)*1000+3))
+  set.seed(seeds[5])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.6,0.6,0.6,0.6,0.5),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.6,0.6,0.6,0.6,0.5),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_6_0_6_0_6_0_6_0_5.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3311*((j+j)*1000+3),3311*((j+j+8)*1000+3),3311*((j+j+3)*1000+3),3311*((j+j+5)*1000+3),3311*((j+j+7)*1000+3),3311*((j+j+9)*1000+3),3311*((j+j+10)*1000+3),331*((j+j+3)*1000+3),331*((j+j+5)*1000+3))
+  set.seed(seeds[6])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.6,0.6,0.6,0.4,0.4),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.6,0.6,0.6,0.4,0.4),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_6_0_6_0_6_0_4_0_4.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3311*((j+j)*1000+3),3311*((j+j+8)*1000+3),3311*((j+j+3)*1000+3),3311*((j+j+5)*1000+3),3311*((j+j+7)*1000+3),3311*((j+j+9)*1000+3),3311*((j+j+10)*1000+3),331*((j+j+3)*1000+3),331*((j+j+5)*1000+3))
+  set.seed(seeds[7])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.6,0.6,0.6,0.6,0.4),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.6,0.6,0.6,0.6,0.4),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_6_0_6_0_6_0_6_0_4.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3311*((j+j)*1000+3),3311*((j+j+8)*1000+3),3311*((j+j+3)*1000+3),3311*((j+j+5)*1000+3),3311*((j+j+7)*1000+3),3311*((j+j+9)*1000+3),3311*((j+j+10)*1000+3),331*((j+j+3)*1000+3),331*((j+j+5)*1000+3))
+  set.seed(seeds[8])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.6,0.6,0.6,0.8,0.8),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.6,0.6,0.6,0.8,0.8),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_6_0_6_0_6_0_8_0_8.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3311*((j+j)*1000+3),3311*((j+j+8)*1000+3),3311*((j+j+3)*1000+3),3311*((j+j+5)*1000+3),3311*((j+j+7)*1000+3),3311*((j+j+9)*1000+3),3311*((j+j+10)*1000+3),331*((j+j+3)*1000+3),331*((j+j+5)*1000+3))
+  set.seed(seeds[9])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.6,0.6,0.6,0.6,0.8),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.6,0.6,0.6,0.6,0.8),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_6_0_6_0_6_0_6_0_8.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+#########0.7,0.8,0.8,0.8,0.8
+binomialfixsamplesize<-simforfixed(h=c(0.7,0.8,0.8,0.8,0.8),interimn=4) # 1428
+
+
+simnull<-list()
+for (j in (1:length(enrollratef))){
+  seeds<-c(3322*((j+j)*1000+3),3322*((j+j+8)*1000+3),3322*((j+j+3)*1000+3),3322*((j+j+5)*1000+3),3322*((j+j+7)*1000+3),3322*((j+j+9)*1000+3),3322*((j+j+10)*1000+3),331*((j+j+7)*1000+3),331*((j+j+9)*1000+3))
+  set.seed(seeds[1])
+  simnull[[j]]<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.7,0.7,0.7,0.7,0.7),interimn=4)
+  })
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3322*((j+j)*1000+3),3322*((j+j+8)*1000+3),3322*((j+j+3)*1000+3),3322*((j+j+5)*1000+3),3322*((j+j+7)*1000+3),3322*((j+j+9)*1000+3),3322*((j+j+10)*1000+3),331*((j+j+7)*1000+3),331*((j+j+9)*1000+3))
+  set.seed(seeds[2])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.7,0.7,0.7,0.8,0.8),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.7,0.7,0.7,0.8,0.8),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_7_0_7_0_7_0_8_0_8.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3322*((j+j)*1000+3),3322*((j+j+8)*1000+3),3322*((j+j+3)*1000+3),3322*((j+j+5)*1000+3),3322*((j+j+7)*1000+3),3322*((j+j+9)*1000+3),3322*((j+j+10)*1000+3),331*((j+j+7)*1000+3),331*((j+j+9)*1000+3))
+  set.seed(seeds[3])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.7,0.7,0.7,0.7,0.8),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.7,0.7,0.7,0.7,0.8),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_7_0_7_0_7_0_7_0_8.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3322*((j+j)*1000+3),3322*((j+j+8)*1000+3),3322*((j+j+3)*1000+3),3322*((j+j+5)*1000+3),3322*((j+j+7)*1000+3),3322*((j+j+9)*1000+3),3322*((j+j+10)*1000+3),331*((j+j+7)*1000+3),331*((j+j+9)*1000+3))
+  set.seed(seeds[4])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.7,0.7,0.7,0.6,0.6),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.7,0.7,0.7,0.6,0.6),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_7_0_7_0_7_0_6_0_6.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3322*((j+j)*1000+3),3322*((j+j+8)*1000+3),3322*((j+j+3)*1000+3),3322*((j+j+5)*1000+3),3322*((j+j+7)*1000+3),3322*((j+j+9)*1000+3),3322*((j+j+10)*1000+3),331*((j+j+7)*1000+3),331*((j+j+9)*1000+3))
+  set.seed(seeds[5])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.7,0.7,0.7,0.7,0.6),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.7,0.7,0.7,0.7,0.6),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_7_0_7_0_7_0_7_0_6.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3322*((j+j)*1000+3),3322*((j+j+8)*1000+3),3322*((j+j+3)*1000+3),3322*((j+j+5)*1000+3),3322*((j+j+7)*1000+3),3322*((j+j+9)*1000+3),3322*((j+j+10)*1000+3),331*((j+j+7)*1000+3),331*((j+j+9)*1000+3))
+  set.seed(seeds[6])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.7,0.7,0.7,0.5,0.5),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.7,0.7,0.7,0.5,0.5),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_7_0_7_0_7_0_5_0_5.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3322*((j+j)*1000+3),3322*((j+j+8)*1000+3),3322*((j+j+3)*1000+3),3322*((j+j+5)*1000+3),3322*((j+j+7)*1000+3),3322*((j+j+9)*1000+3),3322*((j+j+10)*1000+3),331*((j+j+7)*1000+3),331*((j+j+9)*1000+3))
+  set.seed(seeds[7])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.7,0.7,0.7,0.7,0.5),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.7,0.7,0.7,0.7,0.5),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_7_0_7_0_7_0_7_0_5.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3322*((j+j)*1000+3),3322*((j+j+8)*1000+3),3322*((j+j+3)*1000+3),3322*((j+j+5)*1000+3),3322*((j+j+7)*1000+3),3322*((j+j+9)*1000+3),3322*((j+j+10)*1000+3),331*((j+j+7)*1000+3),331*((j+j+9)*1000+3))
+  set.seed(seeds[8])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.7,0.7,0.7,0.9,0.9),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.7,0.7,0.7,0.9,0.9),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_7_0_7_0_7_0_9_0_9.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(3322*((j+j)*1000+3),3322*((j+j+8)*1000+3),3322*((j+j+3)*1000+3),3322*((j+j+5)*1000+3),3322*((j+j+7)*1000+3),3322*((j+j+9)*1000+3),3322*((j+j+10)*1000+3),331*((j+j+7)*1000+3),331*((j+j+9)*1000+3))
+  set.seed(seeds[9])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.7,0.7,0.7,0.7,0.9),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.7,0.7,0.7,0.7,0.9),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_7_0_7_0_7_0_7_0_9.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+#########0.8,0.9,0.9,0.9,0.9
+binomialfixsamplesize<-simforfixed(h=c(0.8,0.9,0.9,0.9,0.9),interimn=4) # 960
+
+
+simnull<-list()
+for (j in (1:length(enrollratef))){
+  seeds<-c(4*((j+j)*1000+3),4*((j+j+8)*1000+3),4*((j+j+3)*1000+3),4*((j+j+5)*1000+3),4*((j+j+7)*1000+3),4*((j+j+9)*1000+3),4*((j+j+10)*1000+3))
+  set.seed(seeds[1])
+  simnull[[j]]<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.8,0.8,0.8,0.8,0.8),interimn=4)
+  })
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(4*((j+j)*1000+3),4*((j+j+8)*1000+3),4*((j+j+3)*1000+3),4*((j+j+5)*1000+3),4*((j+j+7)*1000+3),4*((j+j+9)*1000+3),4*((j+j+10)*1000+3))
+  set.seed(seeds[2])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.8,0.8,0.8,0.9,0.9),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.8,0.8,0.8,0.9,0.9),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_8_0_8_0_8_0_9_0_9.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(4*((j+j)*1000+3),4*((j+j+8)*1000+3),4*((j+j+3)*1000+3),4*((j+j+5)*1000+3),4*((j+j+7)*1000+3),4*((j+j+9)*1000+3),4*((j+j+10)*1000+3))
+  set.seed(seeds[3])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.8,0.8,0.8,0.8,0.9),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.8,0.8,0.8,0.8,0.9),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_8_0_8_0_8_0_8_0_9.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(4*((j+j)*1000+3),4*((j+j+8)*1000+3),4*((j+j+3)*1000+3),4*((j+j+5)*1000+3),4*((j+j+7)*1000+3),4*((j+j+9)*1000+3),4*((j+j+10)*1000+3))
+  set.seed(seeds[4])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.8,0.8,0.8,0.7,0.7),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.8,0.8,0.8,0.7,0.7),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_8_0_8_0_8_0_7_0_7.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(4*((j+j)*1000+3),4*((j+j+8)*1000+3),4*((j+j+3)*1000+3),4*((j+j+5)*1000+3),4*((j+j+7)*1000+3),4*((j+j+9)*1000+3),4*((j+j+10)*1000+3))
+  set.seed(seeds[5])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.8,0.8,0.8,0.8,0.7),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.8,0.8,0.8,0.8,0.7),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_8_0_8_0_8_0_8_0_7.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(4*((j+j)*1000+3),4*((j+j+8)*1000+3),4*((j+j+3)*1000+3),4*((j+j+5)*1000+3),4*((j+j+7)*1000+3),4*((j+j+9)*1000+3),4*((j+j+10)*1000+3))
+  set.seed(seeds[6])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.8,0.8,0.8,0.6,0.6),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.8,0.8,0.8,0.6,0.6),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_8_0_8_0_8_0_6_0_6.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+
+for (j in (1:length(enrollratef))){
+  seeds<-c(4*((j+j)*1000+3),4*((j+j+8)*1000+3),4*((j+j+3)*1000+3),4*((j+j+5)*1000+3),4*((j+j+7)*1000+3),4*((j+j+9)*1000+3),4*((j+j+10)*1000+3))
+  set.seed(seeds[7])
+  sim1<-lapply(1:1000,function(x) {
+    simforfixed1(j=j,x,N2=5*binomialfixsamplesize[[1]]/4,armn=5,armlabel=c("Arm 1", "Arm 2","Arm 3", "Arm 4","Arm 5"),h=c(0.8,0.8,0.8,0.8,0.6),interimn=4)
+  })
+  total(j=j,arm1=5,arm2=1:5,h=c(0.8,0.8,0.8,0.8,0.6),patha='C:/Users/Chuyao/Desktop/sim/22_09_13/multiarm/GSD/five_arms/delayed_response_0/fivearmsgsd0_8_0_8_0_8_0_8_0_6.csv',
+        perct1=rlang::expr(c(perctp,perctt1[i],perctt2[i],perctt3[i],perctt4[i])),perct2=perctp,perct3=perctt,repn=1000,interimn=4,enrollrate1=enrollratef[[j]])
+}
+

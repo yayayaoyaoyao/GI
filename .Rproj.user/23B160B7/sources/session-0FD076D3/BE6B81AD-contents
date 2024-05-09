@@ -1,0 +1,572 @@
+##################################################
+#### Simulations of FLGI Using R
+#### Author: Chuyao Xu
+#### Date: Mar, 13 2023
+#### Purpose: Generate datasets under different scenarios for
+#### further analysis.
+#### Criteria:
+#### 2 arms, 0
+#### bs=2, df=0.5
+##################################################
+source('/home/cxu870/UNI_HOME/binary/FLGI/two_arms/final/flgi_functions.R')
+
+##################### Simulations #####################
+enrollratef<-c(0.1,0.5,0.9)
+perctp<-0.5
+perctt1<-c(0,0.1,0.2,0.3,0.4,0.5)
+repn<-1000
+sim11<-vector("list",length(enrollratef))
+for (jj in (1:length(enrollratef))){
+  seeds<-1:repn
+  sim11[[jj]]<-lapply(1:repn,function(x) {
+    set.seed(seeds[x])
+    pop(vPatsPerMonth=10,nMaxQtyPats=50000,enrollrate1=enrollratef[jj])})
+}#if there are 5000 patients in the trial, how many patients will have disease in the population
+save(sim11,file='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/sim11.Rdata')
+load('/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/sim11.Rdata')
+
+#############################
+#load('/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_5.Rdata')
+load('/home/cxu870/UNI_HOME/binary/FLGI/flgi0_0_5.Rdata')
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(3*((jj+jj)*1000)+68,3*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=552,ptrue=c(0.15,0.15),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.94)
+  },mc.cores = 20)
+}
+
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(3*((jj+jj)*1000)+68,3*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=552,ptrue=c(0.1,0.2),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.94)
+  },mc.cores = 20)
+
+
+  total(jj=jj,repn=repn,h=c(0.1,0.2),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_1_0_2_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(32*((jj+jj)*1000)+68,32*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=168,ptrue=c(0.2,0.2),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.908)
+  },mc.cores = 20)
+}
+
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(32*((jj+jj)*1000)+68,32*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=168,ptrue=c(0.1,0.3),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.908)
+  },mc.cores = 20)
+
+
+  total(jj=jj,repn=repn,h=c(0.1,0.3),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_1_0_3_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=3)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(323*((jj+jj)*1000)+68,323*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=816,ptrue=c(0.25,0.25),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.977)
+  },mc.cores = 20)
+}
+
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(323*((jj+jj)*1000)+68,323*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=816,ptrue=c(0.2,0.3),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.977)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.2,0.3),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_2_0_3_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(3232*((jj+jj)*1000)+68,3232*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=224,ptrue=c(0.3,0.3),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.903)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(3232*((jj+jj)*1000)+68,3232*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=224,ptrue=c(0.2,0.4),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.903)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.2,0.4),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_2_0_4_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(3311*((jj+jj)*1000)+68,3311*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=100,ptrue=c(0.35,0.35),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.952)
+  },mc.cores = 20)
+}
+
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(3311*((jj+jj)*1000)+68,3311*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=100,ptrue=c(0.2,0.5),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.952)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.2,0.5),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_2_0_5_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=2)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(32323*((jj+jj)*1000)+68,32323*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=992,ptrue=c(0.35,0.35),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.9434)
+  },mc.cores = 20)
+}
+
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(32323*((jj+jj)*1000)+68,32323*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=992,ptrue=c(0.3,0.4),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.9434)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.3,0.4),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_3_0_4_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(3322*((jj+jj)*1000)+68,3322*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=256,ptrue=c(0.4,0.4),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.96)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(3322*((jj+jj)*1000)+68,3322*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=256,ptrue=c(0.3,0.5),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.96)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.3,0.5),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_3_0_5_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(4545*((jj+jj)*1000)+68,4545*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=114,ptrue=c(0.45,0.45),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.933)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(4545*((jj+jj)*1000)+68,4545*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=114,ptrue=c(0.3,0.6),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.933)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.3,0.6),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_3_0_6_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=3)
+}
+
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(4*((jj+jj)*1000)+68,4*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    # print(x)
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=1080,ptrue=c(0.45,0.45),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.929)
+  },mc.cores = 20)
+}
+
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(4*((jj+jj)*1000)+68,4*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=1080,ptrue=c(0.4,0.5),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.929)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.4,0.5),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_4_0_5_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(454*((jj+jj)*1000)+68,454*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=264,ptrue=c(0.5,0.5),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.9554)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(454*((jj+jj)*1000)+68,454*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=264,ptrue=c(0.4,0.6),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.9554)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.4,0.6),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_4_0_6_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(4533*((jj+jj)*1000)+68,4533*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=114,ptrue=c(0.55,0.55),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.962)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(4533*((jj+jj)*1000)+68,4533*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=114,ptrue=c(0.4,0.7),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.962)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.4,0.7),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_4_0_7_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=3)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(45*((jj+jj)*1000)+68,45*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=1080,ptrue=c(0.55,0.55),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.964)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(45*((jj+jj)*1000)+68,45*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=1080,ptrue=c(0.5,0.6),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.964)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.5,0.6),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_5_0_6_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(453*((jj+jj)*1000)+68,453*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=256,ptrue=c(0.6,0.6),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.9551)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(453*((jj+jj)*1000)+68,453*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=256,ptrue=c(0.5,0.7),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.9551)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.5,0.7),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_5_0_7_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(451*((jj+jj)*1000)+68,451*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=100,ptrue=c(0.65,0.65),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.935)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(451*((jj+jj)*1000)+68,451*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=100,ptrue=c(0.5,0.8),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.935)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.5,0.8),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_5_0_8_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=2)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(45454*((jj+jj)*1000)+68,45454*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=992,ptrue=c(0.65,0.65),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.953)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(45454*((jj+jj)*1000)+68,45454*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=992,ptrue=c(0.6,0.7),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.953)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.6,0.7),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_6_0_7_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(45321*((jj+jj)*1000)+68,45321*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=224,ptrue=c(0.7,0.7),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.974)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(45321*((jj+jj)*1000)+68,45321*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=224,ptrue=c(0.6,0.8),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.974)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.6,0.8),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_6_0_8_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(45333*((jj+jj)*1000)+68,45333*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=816,ptrue=c(0.75,0.75),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.9636)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(45333*((jj+jj)*1000)+68,45333*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=816,ptrue=c(0.7,0.8),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.9636)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.7,0.8),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_7_0_8_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(331*((jj+jj)*1000)+68,331*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=168,ptrue=c(0.8,0.8),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.962)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(331*((jj+jj)*1000)+68,331*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=168,ptrue=c(0.7,0.9),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.962)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.7,0.9),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_7_0_9_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=3)
+}
+
+############################
+repn<-1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(33*((jj+jj)*1000)+68,33*((jj+jj+8)*1000)+68)
+  set.seed(seeds[1])
+  simnull[[jj]]<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=552,ptrue=c(0.85,0.85),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.931)
+  },mc.cores = 20)
+}
+
+for (jj in (1:length(enrollratef))){
+  RNGkind("L'Ecuyer-CMRG")
+  seeds<-c(33*((jj+jj)*1000)+68,33*((jj+jj+8)*1000)+68)
+  set.seed(seeds[2])
+  sim1<-parallel::mclapply(1:repn,function(x) {
+    simflgi(jj=jj,x=x,vTimeToOutcome1=0,I0=matrix(1,nrow=2,2),K=2,crit=0.025,noRuns2=100,
+                            Tsize=552,ptrue=c(0.8,0.9),block=2,rule='Controlled FLGI',ztype='unpooled', stopbound=1.931)
+  },mc.cores = 20)
+
+  total(jj=jj,repn=repn,h=c(0.8,0.9),arm1=2,arm2=1:2,
+        patha='/home/cxu870/UNI_HOME/binary/FLGI/two_arms/CFLGI/delayed_response_0/df_0_5/block_size_2/flgi0_8_0_9_0_5.csv',perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}

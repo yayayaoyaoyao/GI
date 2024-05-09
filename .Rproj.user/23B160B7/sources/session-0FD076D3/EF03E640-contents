@@ -1,0 +1,380 @@
+pacman::p_load(ggplot2,cowplot,viridis,hrbrthemes,tidyverse,flextable,officer,dplyr,gridExtra,grid,qpdf)
+
+outputfun1<-function(method,dat,arm=1:2,repn=1000){
+  output<-as.data.frame(dat)%>% 
+    group_by(arm,across(starts_with('hypothesisn')),across(starts_with('proportion')),enrollrate,interimn) %>% 
+    summarize_at(vars(starts_with("patientsintrial"),starts_with("patientsinpopulation")), list(mean=mean,median=median,sd=sd,Q1=~quantile(., probs = 0.25),Q3=~quantile(., probs = 0.75)))%>%
+    unite("hypothesis", eval(sprintf("hypothesisn%s",arm)), remove = FALSE, sep=', ')%>% 
+    unite("proportion", eval(sprintf("proportion%s",arm)), remove = FALSE, sep=', ')
+  
+  
+  output1a1<-  as.data.frame(apply(output[,which(names(output) %in% c(sprintf("patientsintrial%s_median",arm)))], MARGIN=2,  ceiling))%>%
+    unite("mediant", eval(sprintf("patientsintrial%s_median",arm)),remove = FALSE, sep=', ')
+  output1a2<-  as.data.frame(apply(output[,which(names(output) %in% c( sprintf("patientsinpopulation%s_median",arm)))], MARGIN=2, digits=3, round))%>%
+    mutate_if(is.numeric, ~format(., nsamll= 2)) %>% 
+    unite("medianp", eval(sprintf("patientsinpopulation%s_median",arm)),remove = FALSE, sep=', ')
+  
+  output1b1<-  as.data.frame(apply(output[,which(names(output) %in% c(sprintf("patientsintrial%s_mean",arm)))], MARGIN=2, ceiling))%>%
+    unite("meant", eval(sprintf("patientsintrial%s_mean",arm)),remove = FALSE, sep=', ')
+  output1b2<-as.data.frame(apply(output[,which(names(output) %in% c( sprintf("patientsinpopulation%s_mean",arm)))], MARGIN=2, digits=3, round))%>%
+    mutate_if(is.numeric, ~format(., nsamll= 2)) %>% 
+    unite("meanp", eval(sprintf("patientsinpopulation%s_mean",arm)),remove = FALSE, sep=', ')
+  
+  output1c1<-  as.data.frame(apply(output[,which(names(output) %in% c(sprintf("patientsintrial%s_sd",arm)))],MARGIN=2, digits=2, round))%>%
+    # mutate_if(is.numeric, ~format(., nsamll= 2)) %>% 
+    unite("sdt", eval(sprintf("patientsintrial%s_sd",arm)),remove = FALSE, sep=', ')
+  
+  output1c2<-  as.data.frame(apply(output[,which(names(output) %in% c(sprintf("patientsinpopulation%s_sd",arm)))],MARGIN=2, digits=3, round))%>%
+    mutate_if(is.numeric, ~format(., nsamll= 2)) %>% 
+    unite("sdp", eval(sprintf("patientsinpopulation%s_sd",arm)),remove = FALSE, sep=', ')
+  
+  output1h1<-  as.data.frame(apply(output[,which(names(output) %in% c(sprintf("patientsintrial%s_Q1",arm)))],MARGIN=2, digits=2, round))%>%
+    # mutate_if(is.numeric, ~format(., nsamll= 2)) %>% 
+    unite("Q1t", eval(sprintf("patientsintrial%s_Q1",arm)),remove = FALSE, sep=', ')
+  
+  output1h2<-  as.data.frame(apply(output[,which(names(output) %in% c(sprintf("patientsinpopulation%s_Q1",arm)))],MARGIN=2, digits=3, round))%>%
+    mutate_if(is.numeric, ~format(., nsamll= 2)) %>% 
+    unite("Q1p", eval(sprintf("patientsinpopulation%s_Q1",arm)),remove = FALSE, sep=', ')
+  
+  output1l1<-  as.data.frame(apply(output[,which(names(output) %in% c(sprintf("patientsintrial%s_Q3",arm)))],MARGIN=2, digits=2, round))%>%
+    # mutate_if(is.numeric, ~format(., nsamll= 2)) %>% 
+    unite("Q3t", eval(sprintf("patientsintrial%s_Q3",arm)),remove = FALSE, sep=', ')
+  
+  output1l2<-  as.data.frame(apply(output[,which(names(output) %in% c(sprintf("patientsinpopulation%s_Q3",arm)))],MARGIN=2, digits=3, round))%>%
+    mutate_if(is.numeric, ~format(., nsamll= 2)) %>% 
+    unite("Q3p", eval(sprintf("patientsinpopulation%s_Q3",arm)),remove = FALSE, sep=', ')
+  
+  output1d<-as.data.frame(dat)%>% 
+    group_by(arm,across(starts_with('hypothesisn')),across(starts_with('proportion')),enrollrate,interimn) %>% 
+    summarize_at(vars(triallength), list(trialduration=mean))%>%
+    unite("hypothesis", eval(sprintf("hypothesisn%s",arm)), remove = FALSE, sep=', ')%>% 
+    unite("proportion", eval(sprintf("proportion%s",arm)), remove = FALSE, sep=', ')
+
+  
+  output1f<-output1d[ , which(names(output1d) %in% c('arm','hypothesis','proportion',
+                                                     'enrollrate','interimn','parameters',
+                                                     'trialduration'))]
+  
+  output1f$trialduration<-round(output1f$trialduration, 2)
+
+ # if (crit==1){
+ #  output1d1<-as.data.frame(dat)%>% 
+ #    group_by(arm,across(starts_with('hypothesisn')),across(starts_with('proportion')),enrollrate,interimn) %>% 
+ #    summarise(power=sum(decision2=="Superiorityfinal")/repn,
+ #              alpha=sum(h0decision2=="Superiorityfinal")/repn,
+ #              realpower1=sum(successArm.1.1,na.rm=T)/repn,
+ #              realpower2=sum(successArm.2.1,na.rm=T)/repn)%>%
+ #    #  realpower=sum((patientsintrial2)>patientsintrial1)/repn)%>%
+ #    unite("hypothesis", eval(sprintf("hypothesisn%s",arm)), remove = FALSE, sep=', ')%>% 
+ #    unite("proportion", eval(sprintf("proportion%s",arm)), remove = FALSE, sep=', ')
+ # }else if (crit==0){
+   output1d1<-as.data.frame(dat)%>% 
+     group_by(arm,across(starts_with('hypothesisn')),across(starts_with('proportion')),enrollrate,interimn) %>% 
+     summarise(power=sum(decision2=="Superiorityfinal")/repn,
+               alpha=sum(h0decision2=="Superiorityfinal")/repn,
+               realpower1=sum(success1.1,na.rm=T)/repn,
+               realpower2=sum(success2.1,na.rm=T)/repn)%>%
+     #  realpower=sum((patientsintrial2)>patientsintrial1)/repn)%>%
+     unite("hypothesis", eval(sprintf("hypothesisn%s",arm)), remove = FALSE, sep=', ')%>% 
+     unite("proportion", eval(sprintf("proportion%s",arm)), remove = FALSE, sep=', ')
+   
+ #}
+   output1d2<-  as.data.frame(apply(output1d1[,which(names(output1d1) %in% c( sprintf("realpower%s",arm)))], MARGIN=2, digits=2, round))%>%
+    unite("success", eval(sprintf("realpower%s",arm)),remove = FALSE, sep=', ')
+  output1d1<- select(output1d1,-c(sprintf("realpower%s",arm)))
+  output1d3<-cbind(output1d1,output1d2)
+  
+  output1f1<-output1d3[ , which(names(output1d3) %in% c('arm','hypothesis','proportion',
+                                                        'enrollrate','interimn','power',
+                                                        'success',#'gittinpower',
+                                                        'alpha'))]
+ 
+  mediant<-output1a1[ , -which(names(output1a1) %in% c(sprintf("patientsintrial%s_median",arm)))]
+  medianp<-output1a2[ , -which(names(output1a2) %in% c(sprintf("patientsinpopulation%s_median",arm)))]
+  
+  meant<-output1b1[ , -which(names(output1b1) %in% c(sprintf("patientsintrial%s_mean",arm)))]
+  meanp<-output1b2[ , -which(names(output1b2) %in% c(sprintf("patientsinpopulation%s_mean",arm)))]
+  
+  sdt<-output1c1[ , -which(names(output1c1) %in% c(sprintf("patientsintrial%s_sd",arm)))]
+  sdp<-output1c2[ , -which(names(output1c2) %in% c(sprintf("patientsinpopulation%s_sd",arm)))]
+  
+  Q1t<-output1h1[ , -which(names(output1h1) %in% c(sprintf("patientsintrial%s_Q1",arm)))]
+  Q1p<-output1h2[ , -which(names(output1h2) %in% c(sprintf("patientsinpopulation%s_Q1",arm)))]
+  
+  Q3t<-output1l1[ , -which(names(output1l1) %in% c(sprintf("patientsintrial%s_Q3",arm)))]
+  Q3p<-output1l2[ , -which(names(output1l2) %in% c(sprintf("patientsinpopulation%s_Q3",arm)))]
+  
+  output2d<-output[ , -which(names(output) %in% c(sprintf("hypothesisn%s",arm),sprintf("proportion%s",arm),sprintf("patientsintrial%s_median",arm),
+                                                  sprintf("patientsinpopulation%s_median",arm),sprintf("patientsintrial%s_mean",arm),
+                                                  sprintf("patientsinpopulation%s_mean",arm),sprintf("patientsintrial%s_sd",arm),
+                                                  sprintf("patientsinpopulation%s_Q1",arm),sprintf("patientsintrial%s_Q1",arm),
+                                                  sprintf("patientsinpopulation%s_Q3",arm),sprintf("patientsintrial%s_Q3",arm),sprintf("patientsinpopulation%s_sd",arm)))]
+  output2e<-cbind(mediant=mediant,medianp=medianp,meant=meant,meanp=meanp,sdt=sdt,sdp=sdp,
+                  Q1t=Q1t,Q1p=Q1p,Q3t=Q3t,Q3p=Q3p,output2d)
+  
+  output3a<-output2e[order(output2e$arm, output2e$hypothesis,output2e$proportion,output2e$enrollrate,output2e$interimn),]#%>%
+
+  
+  # output3b<-left_join(output3a,output3a1,by=c('arm','hypothesis','proportion','enrollrate','interimn',"parameters"))
+  output3c<-left_join(output3a,output1f,by=c('arm','hypothesis','proportion','enrollrate','interimn'))
+  output3d<-left_join(output3c,output1f1,by=c('arm','hypothesis','proportion','enrollrate','interimn'))
+  
+  return(output3d)
+  
+}
+
+
+outputfun<-function(patha,patterna,titlea,arm,iter,pathb,pathc,pathd,
+                    pathb1,pathc1,pathd1,pathb2,pathc2,pathd2,
+                    pathe,pathf,pathg,pathe1,pathf1,pathg1,
+                    pathe2,pathf2,pathg2,
+                    pathh,pathi,pathj,pathh1,pathi1,pathj1,
+                    pathh2,pathi2,pathj2) {
+  
+  files1<-list.files(paste(c(patha,pathb),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim1<-do.call(rbind,lapply(files1,read.csv,stringsAsFactors= TRUE))
+  files2<-list.files(paste(c(patha,pathc),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim2<-do.call(rbind,lapply(files2,read.csv,stringsAsFactors= TRUE))
+  files3<-list.files(paste(c(patha,pathd),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim3<-do.call(rbind,lapply(files3,read.csv,stringsAsFactors= TRUE))
+  files4<-list.files(paste(c(patha,pathe),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim4<-do.call(rbind,lapply(files4,read.csv,stringsAsFactors= TRUE))
+  files5<-list.files(paste(c(patha,pathf),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim5<-do.call(rbind,lapply(files5,read.csv,stringsAsFactors= TRUE))
+  files6<-list.files(paste(c(patha,pathg),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim6<-do.call(rbind,lapply(files6,read.csv,stringsAsFactors= TRUE))
+  
+  files7<-list.files(paste(c(patha,pathh),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim7<-do.call(rbind,lapply(files7,read.csv,stringsAsFactors= TRUE))
+  files8<-list.files(paste(c(patha,pathi),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim8<-do.call(rbind,lapply(files8,read.csv,stringsAsFactors= TRUE))
+  files9<-list.files(paste(c(patha,pathj),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim9<-do.call(rbind,lapply(files9,read.csv,stringsAsFactors= TRUE))
+  
+  files11<-list.files(paste(c(patha,pathb1),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim11<-do.call(rbind,lapply(files11,read.csv,stringsAsFactors= TRUE))
+  files21<-list.files(paste(c(patha,pathc1),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim21<-do.call(rbind,lapply(files21,read.csv,stringsAsFactors= TRUE))
+  files31<-list.files(paste(c(patha,pathd1),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim31<-do.call(rbind,lapply(files31,read.csv,stringsAsFactors= TRUE))
+  files12<-list.files(paste(c(patha,pathb2),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim12<-do.call(rbind,lapply(files12,read.csv,stringsAsFactors= TRUE))
+  files22<-list.files(paste(c(patha,pathc2),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim22<-do.call(rbind,lapply(files22,read.csv,stringsAsFactors= TRUE))
+  files32<-list.files(paste(c(patha,pathd2),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim32<-do.call(rbind,lapply(files32,read.csv,stringsAsFactors= TRUE))
+  
+  files41<-list.files(paste(c(patha,pathe1),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim41<-do.call(rbind,lapply(files41,read.csv,stringsAsFactors= TRUE))
+  files51<-list.files(paste(c(patha,pathf1),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim51<-do.call(rbind,lapply(files51,read.csv,stringsAsFactors= TRUE))
+  files61<-list.files(paste(c(patha,pathg1),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim61<-do.call(rbind,lapply(files61,read.csv,stringsAsFactors= TRUE))
+  files42<-list.files(paste(c(patha,pathe2),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim42<-do.call(rbind,lapply(files42,read.csv,stringsAsFactors= TRUE))
+  files52<-list.files(paste(c(patha,pathf2),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim52<-do.call(rbind,lapply(files52,read.csv,stringsAsFactors= TRUE))
+  files62<-list.files(paste(c(patha,pathg2),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim62<-do.call(rbind,lapply(files62,read.csv,stringsAsFactors= TRUE))
+  
+  files71<-list.files(paste(c(patha,pathh1),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim71<-do.call(rbind,lapply(files71,read.csv,stringsAsFactors= TRUE))
+  files81<-list.files(paste(c(patha,pathi1),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim81<-do.call(rbind,lapply(files81,read.csv,stringsAsFactors= TRUE))
+  files91<-list.files(paste(c(patha,pathj1),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim91<-do.call(rbind,lapply(files91,read.csv,stringsAsFactors= TRUE))
+  files72<-list.files(paste(c(patha,pathh2),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim72<-do.call(rbind,lapply(files72,read.csv,stringsAsFactors= TRUE))
+  files82<-list.files(paste(c(patha,pathi2),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim82<-do.call(rbind,lapply(files82,read.csv,stringsAsFactors= TRUE))
+  files92<-list.files(paste(c(patha,pathj2),collapse = ""),pattern = patterna,full.names=TRUE)
+  sim92<-do.call(rbind,lapply(files92,read.csv,stringsAsFactors= TRUE))
+  
+  output4a<-cbind(outputfun1(method='BRAR',dat=sim1),method='BRAR (Beta(1,1), tp=0.5, DR=0)')
+  output4b<-cbind(outputfun1(method='BRAR',dat=sim2),method='BRAR (Beta(1,1), tp=1, DR=0)')
+  output4c<-cbind(outputfun1(method='BRAR',dat=sim3),method='BRAR (Beta(1,1), tp=n/2N, DR=0)')
+  output4d<-cbind(outputfun1(method='BRAR',dat=sim4),method='BRAR (Beta(2,3), tp=0.5, DR=0)')
+  output4e<-cbind(outputfun1(method='BRAR',dat=sim5),method='BRAR (Beta(2,3), tp=1, DR=0)')
+  output4f<-cbind(outputfun1(method='BRAR',dat=sim6),method='BRAR (Beta(2,3), tp=n/2N, DR=0)')
+  output4g<-cbind(outputfun1(method='BRAR',dat=sim7),method='BRAR (Beta(4,6), tp=0.5, DR=0)')
+  output4h<-cbind(outputfun1(method='BRAR',dat=sim8),method='BRAR (Beta(4,6), tp=1, DR=0)')
+  output4i<-cbind(outputfun1(method='BRAR',dat=sim9),method='BRAR (Beta(4,6), tp=n/2N, DR=0)')
+  
+  output4a1<-cbind(outputfun1(method='BRAR',dat=sim11),method='BRAR (Beta(1,1), tp=0.5, DR=30 Days)')
+  output4b1<-cbind(outputfun1(method='BRAR',dat=sim21),method='BRAR (Beta(1,1), tp=1, DR=30 Days)')
+  output4c1<-cbind(outputfun1(method='BRAR',dat=sim31),method='BRAR (Beta(1,1), tp=n/2N, DR=30 Days)')
+  output4d1<-cbind(outputfun1(method='BRAR',dat=sim41),method='BRAR (Beta(2,3), tp=0.5, DR=30 Days)')
+  output4e1<-cbind(outputfun1(method='BRAR',dat=sim51),method='BRAR (Beta(2,3), tp=1, DR=30 Days)')
+  output4f1<-cbind(outputfun1(method='BRAR',dat=sim61),method='BRAR (Beta(2,3), tp=n/2N, DR=30 Days)')
+  output4g1<-cbind(outputfun1(method='BRAR',dat=sim71),method='BRAR (Beta(4,6), tp=0.5, DR=30 Days)')
+  output4h1<-cbind(outputfun1(method='BRAR',dat=sim81),method='BRAR (Beta(4,6), tp=1, DR=30 Days)')
+  output4i1<-cbind(outputfun1(method='BRAR',dat=sim91),method='BRAR (Beta(4,6), tp=n/2N, DR=30 Days)')
+ 
+  output4a2<-cbind(outputfun1(method='BRAR',dat=sim12),method='BRAR (Beta(1,1), tp=0.5, DR=60 Days)')
+  output4b2<-cbind(outputfun1(method='BRAR',dat=sim22),method='BRAR (Beta(1,1), tp=1, DR=60 Days)')
+  output4c2<-cbind(outputfun1(method='BRAR',dat=sim32),method='BRAR (Beta(1,1), tp=n/2N, DR=60 Days)')
+  output4d2<-cbind(outputfun1(method='BRAR',dat=sim42),method='BRAR (Beta(2,3), tp=0.5, DR=60 Days)')
+  output4e2<-cbind(outputfun1(method='BRAR',dat=sim52),method='BRAR (Beta(2,3), tp=1, DR=60 Days)')
+  output4f2<-cbind(outputfun1(method='BRAR',dat=sim62),method='BRAR (Beta(2,3), tp=n/2N, DR=60 Days)')
+  output4g2<-cbind(outputfun1(method='BRAR',dat=sim72),method='BRAR (Beta(4,6), tp=0.5, DR=60 Days)')
+  output4h2<-cbind(outputfun1(method='BRAR',dat=sim82),method='BRAR (Beta(4,6), tp=1, DR=60 Days)')
+  output4i2<-cbind(outputfun1(method='BRAR',dat=sim92),method='BRAR (Beta(4,6), tp=n/2N, DR=60 Days)')
+  
+  output44<-rbind(output4a,output4b,output4c,output4d,output4e,output4f,output4g,output4h,output4i,
+                  output4a1,output4b1,output4c1,output4d1,output4e1,output4f1,output4g1,output4h1,output4i1,
+                  output4a2,output4b2,output4c2,output4d2,output4e2,output4f2,output4g2,output4h2,output4i2)
+  output44<-select(output44,- c('arm','interimn'))
+  neworder=c('enrollrate','proportion','hypothesis','trialduration','method','alpha','power',
+             'mediant','meant','sdt','Q1t','Q3t','success',#'gittinpower',
+            'medianp','meanp','sdp','Q1p','Q3p' )
+  output44<- output44[,neworder]
+  output44<- output44[order(output44$enrollrate,output44$proportion,output44$hypothesis,
+                             output44$method),]
+
+  output44<-  output44 %>% group_by(enrollrate, proportion,hypothesis) %>% 
+               mutate(index= row_number()==1) %>%
+               ungroup
+
+  for (x in (1:nrow(output44))){
+    if (output44$index[x] !=TRUE){
+      output44$hypothesis[x]=''
+      output44$enrollrate[x]=''
+      output44$proportion[x]=''
+      #output44$trialduration[x]=''
+    }
+  }
+  output441<- output44 %>% select(.,  -c('index') ) %>% as.data.frame()
+  
+  output441<- output441%>% flextable()%>%autofit()%>% 
+    #width(j=c(1), width = 1) %>% 
+   # width(j=c(2,3,5,6,7), width = 1.5) %>% 
+    width(j=c(1,2,3,4,6,7,8,9,10,11,12,14,15,16,17,18), width = 2) %>%
+    width(j=c(5), width = 6)%>%
+    width(j=c(13), width = 2.5)
+  
+  output442<-output441 %>%
+    add_header_row(
+      top = TRUE,                
+      values = c("Enroll Rate",     
+                 "Availability in Population", 
+                 "Hypothesis",
+                 'Trial Duration',
+                 'Method',
+                 'Type I Error',
+                 'Power',
+                 
+                 "Trial",    
+                 "","","","","",#"",
+                 
+                 "Population",        
+                 "","","","")) %>% 
+    set_header_labels(enrollrate='',
+                      proportion='',
+                      hypothesis='',
+                      trialduration='',
+                      method='',
+                      alpha='',
+                      power='',
+                      mediant='Median',
+                      meant='Mean',
+                      sdt='SD',
+                      Q1t='Q1',
+                      Q3t='Q3',
+                      success='Prob. of Success',
+                    #  gittinpower='GI Power',
+                      medianp='Median',
+                      meanp='Mean',
+                      sdp='SD',
+                      Q1p='Q1',
+                      Q3p='Q3'
+    )%>%  
+    
+    merge_at(i = 1, j = 8:13, part = "header") %>% 
+    merge_at(i = 1, j = 14:18, part = "header") 
+
+  border_style = officer::fp_border(color="black", width=1)
+  
+
+  output443 <- output442 %>% 
+    border_remove() %>%  
+    theme_booktabs() %>% 
+    vline(part = "all", j = 7, border = border_style) %>%   
+    vline(part = "all", j = 13, border = border_style) %>% 
+ 
+    # fontsize(i = 1, size = 12, part = "header") %>%   # adjust font size of header
+    # bold(i = 1, bold = TRUE, part = "header") %>%     # adjust bold face of header
+    # bold(i = 7, bold = TRUE, part = "body")      
+    merge_at(i = 1:2, j = 1, part = "header") %>% 
+    merge_at(i = 1:2, j = 2, part = "header") %>%
+    merge_at(i = 1:2, j = 3, part = "header") %>% 
+    merge_at(i = 1:2, j = 4, part = "header") %>%
+    merge_at(i = 1:2, j = 5, part = "header") %>% 
+    merge_at(i = 1:2, j = 6, part = "header") %>%
+    merge_at(i = 1:2, j = 7, part = "header") %>% 
+    fontsize(i = 1, size = 12, part = "header") %>%
+    bold(i = 1, bold = TRUE, part = "header") %>%
+    fontsize(i = 2, size = 12, part = "header") %>%
+    bold(i = 2, bold = TRUE, part = "header") %>%
+    flextable::align(align = "center", j = c(1:18), part = "all")  %>% 
+    add_header_lines(, values = paste("Treatment Arm=", titlea))
+  
+  output5[[iter]]<<-output443
+}
+
+
+write_word_table <- function(var, doc){
+  doc %>%
+    body_add_flextable(var) %>% 
+    body_add_break()
+}
+
+default_sect_properties <- prop_section(
+  page_size = page_size(orient = "landscape",width = 28, height =15), type = "continuous",
+  page_margins = page_mar(bottom = .75, top = 0.75, right = 1, left = 1)
+)
+doc_1 <- read_docx()%>%
+  body_set_default_section( default_sect_properties)
+
+
+output5<-list()
+#output5a<-list()
+outputfun(patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/BRAR/",
+          pathb='beta1_1/delayed_response_0/turning_parameters_0_5',
+          pathc='beta1_1/delayed_response_0/turning_parameters_1',
+          pathd='beta1_1/delayed_response_0/turning_parameters_n_2N',
+          pathb1='beta1_1/delayed_response_1/turning_parameters_0_5',
+          pathc1='beta1_1/delayed_response_1/turning_parameters_1',
+          pathd1='beta1_1/delayed_response_1/turning_parameters_n_2N',
+          pathb2='beta1_1/delayed_response_2/turning_parameters_0_5',
+          pathc2='beta1_1/delayed_response_2/turning_parameters_1',
+          pathd2='beta1_1/delayed_response_2/turning_parameters_n_2N',
+          
+          pathe='beta2_3/delayed_response_0/turning_parameters_0_5',
+          pathf= 'beta2_3/delayed_response_0/turning_parameters_1',
+          pathg= 'beta2_3/delayed_response_0/turning_parameters_n_2N',
+          pathe1='beta2_3/delayed_response_1/turning_parameters_0_5',
+          pathf1= 'beta2_3/delayed_response_1/turning_parameters_1',
+          pathg1= 'beta2_3/delayed_response_1/turning_parameters_n_2N',
+          pathe2='beta2_3/delayed_response_2/turning_parameters_0_5',
+          pathf2= 'beta2_3/delayed_response_2/turning_parameters_1',
+          pathg2= 'beta2_3/delayed_response_2/turning_parameters_n_2N',
+          
+          
+          pathh='beta4_6/delayed_response_0/turning_parameters_0_5',
+          pathi= 'beta4_6/delayed_response_0/turning_parameters_1',
+          pathj= 'beta4_6/delayed_response_0/turning_parameters_n_2N',
+          pathh1='beta4_6/delayed_response_1/turning_parameters_0_5',
+          pathi1= 'beta4_6/delayed_response_1/turning_parameters_1',
+          pathj1= 'beta4_6/delayed_response_1/turning_parameters_n_2N',
+          pathh2='beta4_6/delayed_response_2/turning_parameters_0_5',
+          pathi2= 'beta4_6/delayed_response_2/turning_parameters_1',
+          pathj2= 'beta4_6/delayed_response_2/turning_parameters_n_2N',
+          
+          patterna='brar.*\\.csv',
+          titlea=2,
+          arm=1:2, iter=1)
+walk(output5, write_word_table, doc_1)
+print(doc_1, target = "C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/brar_results.docx") %>% invisible()
+
+#print(doc_1, target = "C:/Users/Chuyao/Desktop/brar_results.docx") %>% invisible()
+

@@ -1,0 +1,175 @@
+library(gridExtra)
+library(ggplot2)
+
+patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/BRAR/diff_0_1_result/"
+pathh='beta4_6/delayed_response_0/turning_parameters_0_5'
+pathi= 'beta4_6/delayed_response_0/turning_parameters_1'
+pathj= 'beta4_6/delayed_response_0/turning_parameters_n_2N'
+pathh1='beta4_6/delayed_response_1/turning_parameters_0_5'
+pathi1= 'beta4_6/delayed_response_1/turning_parameters_1'
+pathj1= 'beta4_6/delayed_response_1/turning_parameters_n_2N'
+pathh2='beta4_6/delayed_response_2/turning_parameters_0_5'
+pathi2= 'beta4_6/delayed_response_2/turning_parameters_1'
+pathj2= 'beta4_6/delayed_response_2/turning_parameters_n_2N'
+patterna='brar.*\\.csv'
+
+files7<-list.files(paste(c(patha,pathh),collapse = ""),pattern = patterna,full.names=TRUE)
+sim7<-do.call(rbind,lapply(files7,read.csv,stringsAsFactors= TRUE))
+files8<-list.files(paste(c(patha,pathi),collapse = ""),pattern = patterna,full.names=TRUE)
+sim8<-do.call(rbind,lapply(files8,read.csv,stringsAsFactors= TRUE))
+files9<-list.files(paste(c(patha,pathj),collapse = ""),pattern = patterna,full.names=TRUE)
+sim9<-do.call(rbind,lapply(files9,read.csv,stringsAsFactors= TRUE))
+
+files71<-list.files(paste(c(patha,pathh1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim71<-do.call(rbind,lapply(files71,read.csv,stringsAsFactors= TRUE))
+files81<-list.files(paste(c(patha,pathi1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim81<-do.call(rbind,lapply(files81,read.csv,stringsAsFactors= TRUE))
+files91<-list.files(paste(c(patha,pathj1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim91<-do.call(rbind,lapply(files91,read.csv,stringsAsFactors= TRUE))
+files72<-list.files(paste(c(patha,pathh2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim72<-do.call(rbind,lapply(files72,read.csv,stringsAsFactors= TRUE))
+files82<-list.files(paste(c(patha,pathi2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim82<-do.call(rbind,lapply(files82,read.csv,stringsAsFactors= TRUE))
+files92<-list.files(paste(c(patha,pathj2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim92<-do.call(rbind,lapply(files92,read.csv,stringsAsFactors= TRUE))
+
+
+plotfun<-function(dat,enrollrate,hypo1,hypo2){
+  subdat<-dat[dat$hypothesisn1==hypo1 & dat$hypothesisn2==hypo2 & dat$enrollrate==enrollrate &
+                dat$proportion1==0.5 & dat$proportion2==0,]
+  # l1<-expression(paste(H[0],": " ))
+  # l2<-expression(paste(H[1],": " ))
+  ggplot(data = subdat, aes(x = phi02)) +
+    geom_histogram(bins=60)+
+    theme_classic()+
+    ggtitle(paste('H0',": " ,(hypo1+hypo2)/2,", " ,(hypo1+hypo2)/2,", " ,'H1', ": ",hypo1,", " , hypo2)) +#, "\n", "no delay",", " ,
+    # "DF = ",df,", " ,"BS = ",bs)) +
+    xlab(label = "Pr(Pk>Pc+0.1|data)") +
+    ylab('Frequency')+ylim(0,500)+
+    xlim(-0.1, 1)+geom_density(aes(y=60*..density..),color="red")
+
+  # hist(subdat$Phi0,breaks=30,xlim=c(-3,3),main = paste('H0',": " ,hypo1,", " ,hypo1,", " ,'H1', ": ",hypo1,", " , hypo2),
+  #      xlab='Z Statistics',ylab='Frequency')
+}
+
+plotfun1<-function(dat,enrollrate,path1,top1){
+  plot1<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.1,hypo2=0.2)
+  plot2<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.1,hypo2=0.3)
+  plot3<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.2,hypo2=0.3)
+  plot4<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.2,hypo2=0.4)
+  plot5<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.2,hypo2=0.5)
+  plot6<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.3,hypo2=0.4)
+  plot7<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.3,hypo2=0.5)
+  plot8<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.3,hypo2=0.6)
+  plot9<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.4,hypo2=0.5)
+  plot10<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.4,hypo2=0.6)
+  plot11<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.4,hypo2=0.7)
+  plot12<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.5,hypo2=0.6)
+  plot13<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.5,hypo2=0.7)
+  plot14<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.5,hypo2=0.8)
+  plot15<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.6,hypo2=0.7)
+  plot16<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.6,hypo2=0.8)
+  plot17<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.7,hypo2=0.8)
+  plot18<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.7,hypo2=0.9)
+  plot19<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.8,hypo2=0.9)
+  ggsave(path1,width=10, height=15,grid.arrange(top=top1,
+                                                plot1, plot2,plot3, plot4,plot5, plot6,plot7, plot8,plot9, plot10,
+                                                plot11, plot12,plot13, plot14,plot15, plot16,plot17, plot18,plot19 , ncol=3, nrow=7))
+
+}
+
+###################
+plotfun1(dat=sim7,enrollrate=0.1,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_0_5_no_delay.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with No Delay, Beta(4,6) and tp=0.5 \n\nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+
+plotfun1(dat=sim8,enrollrate=0.1,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_n_2N_no_delay.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with No Delay, Beta(4,6) and tp=n/2N \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+
+plotfun1(dat=sim9,enrollrate=0.1,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_1_no_delay.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with No Delay, Beta(4,6) and tp=1 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+
+###################
+plotfun1(dat=sim71,enrollrate=0.1,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_0_5_1_month_delay_er0.1.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with One Month Delay, Beta(4,6), tp=0.5 and ER=0.1 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim71,enrollrate=0.5,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_0_5_1_month_delay_er0.5.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with One Month Delay, Beta(4,6), tp=0.5 and ER=0.5 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim71,enrollrate=0.9,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_0_5_1_month_delay_er0.9.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with One Month Delay, Beta(4,6), tp=0.5 and ER=0.9 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+
+plotfun1(dat=sim72,enrollrate=0.1,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_0_5_2_month_delay_er0.1.pdf",
+           top1=grid::textGrob('Histogram of Test Statistics Using BRAR with Two Month Delay, Beta(4,6), tp=0.5 and ER=0.1 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim72,enrollrate=0.5,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_0_5_2_month_delay_er0.5.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with Two Month Delay, Beta(4,6), tp=0.5 and ER=0.5 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim72,enrollrate=0.9,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_0_5_2_month_delay_er0.9.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with Two Month Delay, Beta(4,6), tp=0.5 and ER=0.9 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+
+###################
+plotfun1(dat=sim81,enrollrate=0.1,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_1_1_month_delay_er0.1.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with One Month Delay, Beta(4,6), tp=1 and ER=0.1 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim81,enrollrate=0.5,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_1_1_month_delay_er0.5.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with One Month Delay, Beta(4,6), tp=1 and ER=0.5 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim81,enrollrate=0.9,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_1_1_month_delay_er0.9.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with One Month Delay, Beta(4,6), tp=1 and ER=0.9 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+
+plotfun1(dat=sim82,enrollrate=0.1,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_1_2_month_delay_er0.1.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with Two Month Delay, Beta(4,6), tp=1 and ER=0.1 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim82,enrollrate=0.5,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_1_2_month_delay_er0.5.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with Two Month Delay, Beta(4,6), tp=1 and ER=0.5 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim82,enrollrate=0.9,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_1_2_month_delay_er0.9.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with Two Month Delay, Beta(4,6), tp=1 and ER=0.9 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+
+###################
+plotfun1(dat=sim91,enrollrate=0.1,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_n_2N_1_month_delay_er0.1.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with One Month Delay, Beta(4,6), tp=n/2N and ER=0.1 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim91,enrollrate=0.5,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_n_2N_1_month_delay_er0.5.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with One Month Delay, Beta(4,6), tp=n/2N and ER=0.5 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim91,enrollrate=0.9,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_n_2N_1_month_delay_er0.9.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with One Month Delay, Beta(4,6), tp=n/2N and ER=0.9 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+
+plotfun1(dat=sim92,enrollrate=0.1,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_n_2N_2_month_delay_er0.1.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with Two Month Delay, Beta(4,6), tp=n/2N and ER=0.1 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim92,enrollrate=0.5,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_n_2N_2_month_delay_er0.5.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with Two Month Delay, Beta(4,6), tp=n/2N and ER=0.5 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))
+
+plotfun1(dat=sim92,enrollrate=0.9,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/plot/BRAR/BRAR_beta_4_6_tp_n_2N_2_month_delay_er0.9.pdf",
+         top1=grid::textGrob('Histogram of Test Statistics Using BRAR with Two Month Delay, Beta(4,6), tp=n/2N and ER=0.9 \nUnder the Null Hypothesis to Observe 0.1 Improvement'))

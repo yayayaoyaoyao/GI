@@ -1,0 +1,535 @@
+source('C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/DABCD_function.R')
+
+##################### Simulations #####################
+enrollratef<-c(0.1,0.5,0.9)
+perctp<-0.5
+perctt1<-c(0,0.1,0.2,0.3,0.4,0.5)
+repn<-1000
+sim11<-vector("list",length(enrollratef))
+for (jj in (1:length(enrollratef))){
+  seeds<-1:repn
+  sim11[[jj]]<-lapply(1:repn,function(x) {
+    set.seed(seeds[x])
+    pop(vPatsPerMonth=10,nMaxQtyPats=50000,enrollrate1=enrollratef[jj])})
+}
+save(sim11,file='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/sim11.Rdata')
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(3*((jj+jj)*1000)+77,3*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=56,armn=2,h=c(0.1,0.1),total=552,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(3*((jj+jj)*1000)+77,3*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=56,armn=2,h=c(0.1,0.2),total=552,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.1,0.2),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_1_0_2.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+####################
+repn=1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(32*((jj+jj)*1000)+77,32*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=18,armn=2,h=c(0.1,0.1),total=168,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(32*((jj+jj)*1000)+77,32*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=18,armn=2,h=c(0.1,0.3),total=168,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.1,0.3),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_1_0_3.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=3)
+}
+
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(323*((jj+jj)*1000)+77,323*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=82,armn=2,h=c(0.2,0.2),total=816,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(323*((jj+jj)*1000)+77,323*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=82,armn=2,h=c(0.2,0.3),total=816,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.2,0.3),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_2_0_3.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(3232*((jj+jj)*1000)+77,3232*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=24,armn=2,h=c(0.2,0.2),total=224,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(3232*((jj+jj)*1000)+77,3232*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=24,armn=2,h=c(0.2,0.4),total=224,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.2,0.4),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_2_0_4.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(3311*((jj+jj)*1000)+77,3311*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=10,armn=2,h=c(0.2,0.2),total=100,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(3311*((jj+jj)*1000)+77,3311*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=10,armn=2,h=c(0.2,0.5),total=100,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.2,0.5),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_2_0_5.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=2)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(32323*((jj+jj)*1000)+77,32323*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=100,armn=2,h=c(0.3,0.3),total=992,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(32323*((jj+jj)*1000)+77,32323*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=100,armn=2,h=c(0.3,0.4),total=992,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.3,0.4),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_3_0_4.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(3322*((jj+jj)*1000)+77,3322*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=26,armn=2,h=c(0.3,0.3),total=256,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(3322*((jj+jj)*1000)+77,3322*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=26,armn=2,h=c(0.3,0.5),total=256,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.3,0.5),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_3_0_5.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(4545*((jj+jj)*1000)+77,4545*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=12,armn=2,h=c(0.3,0.3),total=114,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(4545*((jj+jj)*1000)+77,4545*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=12,armn=2,h=c(0.3,0.6),total=114,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.3,0.6),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_3_0_6.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=3)
+}
+
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(4*((jj+jj)*1000)+77,4*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=108,armn=2,h=c(0.4,0.4),total=1080,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(4*((jj+jj)*1000)+77,4*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=108,armn=2,h=c(0.4,0.5),total=1080,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.4,0.5),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_4_0_5.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(454*((jj+jj)*1000)+77,454*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=28,armn=2,h=c(0.4,0.4),total=264,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(454*((jj+jj)*1000)+77,454*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=28,armn=2,h=c(0.4,0.6),total=264,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.4,0.6),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_4_0_6.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(4533*((jj+jj)*1000)+77,4533*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=12,armn=2,h=c(0.4,0.4),total=114,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(4533*((jj+jj)*1000)+77,4533*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=12,armn=2,h=c(0.4,0.7),total=114,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.4,0.7),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_4_0_7.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=3)
+}
+
+####################
+repn=1000
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(45*((jj+jj)*1000)+77,45*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=108,armn=2,h=c(0.5,0.5),total=1080,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(45*((jj+jj)*1000)+77,45*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=108,armn=2,h=c(0.5,0.6),total=1080,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.5,0.6),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_5_0_6.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(453*((jj+jj)*1000)+77,453*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=26,armn=2,h=c(0.5,0.5),total=256,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(453*((jj+jj)*1000)+77,453*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=26,armn=2,h=c(0.5,0.7),total=256,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.5,0.7),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_5_0_7.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(451*((jj+jj)*1000)+77,451*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=10,armn=2,h=c(0.5,0.5),total=100,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(451*((jj+jj)*1000)+77,451*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=10,armn=2,h=c(0.5,0.8),total=100,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.5,0.8),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_5_0_8.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=2)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(45454*((jj+jj)*1000)+77,45454*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=100,armn=2,h=c(0.6,0.6),total=992,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(45454*((jj+jj)*1000)+77,45454*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=100,armn=2,h=c(0.6,0.7),total=992,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.6,0.7),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_6_0_7.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(45321*((jj+jj)*1000)+77,45321*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=24,armn=2,h=c(0.6,0.6),total=224,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(45321*((jj+jj)*1000)+77,45321*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=24,armn=2,h=c(0.6,0.8),total=224,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.6,0.8),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_6_0_8.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(45333*((jj+jj)*1000)+77,45333*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=82,armn=2,h=c(0.7,0.7),total=816,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(45333*((jj+jj)*1000)+77,45333*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=82,armn=2,h=c(0.7,0.8),total=816,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.7,0.8),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_7_0_8.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(331*((jj+jj)*1000)+77,331*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=18,armn=2,h=c(0.7,0.7),total=168,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(331*((jj+jj)*1000)+77,331*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=18,armn=2,h=c(0.7,0.9),total=168,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.7,0.9),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_7_0_9.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=3)
+}
+
+####################
+simnull<-list()
+for (jj in (1:length(enrollratef))){
+  seeds<-c(33*((jj+jj)*1000)+77,33*((jj+jj+8)*1000)+77)
+  set.seed(seeds[1])
+  simnull[[jj]]<-lapply(1:repn,function(x) {
+    # print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=56,armn=2,h=c(0.8,0.8),total=552,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+}
+for (jj in (1:length(enrollratef))){
+  seeds<-c(33*((jj+jj)*1000)+77,33*((jj+jj+8)*1000)+77)
+  set.seed(seeds[2])
+  sim1<-lapply(1:repn,function(x) {
+    #  print(x)
+    allocationfun(jj=jj,x=x,gamma=2,N1=56,armn=2,h=c(0.8,0.9),total=552,type='Neyman',
+                  armlabel=c("Arm 1", "Arm 2"),zz=qnorm(0.975), vTimeToOutcome1=expression(rnorm( length( vStartTime ),60, 3))
+    )})
+
+  total(jj=jj,repn=repn,h=c(0.8,0.9),arm1=2,arm2=1:2,
+        patha='C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_2/dabcd_0_8_0_9.csv',
+        perct2=perctp,
+        perct3=perctt,perct1=rlang::expr(c(perctp,perctt1[i])),
+        enrollrate1=enrollratef[[jj]],interimn=4)
+}

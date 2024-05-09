@@ -1,0 +1,794 @@
+#' @importFrom stats qpois
+#' @importFrom stats rexp
+#' @importFrom stats runif
+#' @importFrom stats rbeta
+#' @importFrom stats rbinom
+#' @importFrom stats rnorm
+
+
+###SimulateAMonthOfAccrualTimes, SimulateArrivalTimes and SimulateOutcomeObservedTime
+###are updated from http://github.com/kwathen/IntroBayesianSimulation
+SimulateAMonthOfAccrualTimes <- function( dPatsPerMonth , dStartMonth )
+{
+  nQtyPats    <- 1.2 *qpois(0.9999,dPatsPerMonth)
+  vTimes      <- cumsum( rexp( nQtyPats, dPatsPerMonth ) )
+  vTimes      <- vTimes[ vTimes < 1 ]
+  vTimes      <- vTimes + dStartMonth
+  return( vTimes )
+}
+
+
+SimulateArrivalTimes <- function( Pats, nMax )
+{
+  vTimes <- c()
+  if( length( Pats ) == 1 )
+  {
+    vTimes <- cumsum(rexp(nMax ,Pats))
+  }
+  else
+  {
+    dStartMonth <- 0
+    nMonth     <- 1
+    while( length( vTimes ) < nMax  )
+    {
+      vTimes      <- c( vTimes, SimulateAMonthOfAccrualTimes( Pats[ nMonth ], dStartMonth ))
+      dStartMonth <- dStartMonth + 1
+
+      if( nMonth < length( Pats ) )
+        nMonth <- nMonth +  1
+    }
+    vTimes <- vTimes[ 1:nMax ]
+  }
+  return( vTimes )
+}
+
+SimulateOutcomeObservedTime <- function( vStartTime,TimeToOutcome )
+{
+  vTimeToOutcome <-eval(TimeToOutcome)
+  vObsTime <- vStartTime  + vTimeToOutcome
+  return( vObsTime )
+}
+
+pop<-function(Pats,nMax,enrollrate){
+  populationtotal<-SimulateArrivalTimes (Pats, nMax)
+  vStartTime1<-rbinom(nMax,size=1,enrollrate)
+  vStartTime2<- cbind(vStartTime1,populationtotal)
+  vStartTime3<-vStartTime2[vStartTime2[,1]==1,]
+  return(list(populationtotal,length(populationtotal),as.vector(vStartTime3[,2])))
+}
+
+blockrand = function(blocksize,N,armn,armlabel){
+  block = rep(1:ceiling(N/blocksize), each = blocksize)
+  a1 = as.data.frame(cbind(block, rand=runif(length(block)), envelope= 1: length(block)))
+  a2 = a1[order(a1$block,a1$rand),]
+  a2$arm = rep(armlabel,times = length(block)/armn)
+  assign = a2[order(a2$envelope),]
+  return(assign[,c("block","arm")])
+}
+
+startfun<-function(popdat,TimeToOutcome,blocksize,N1,armn,armlabel,N2,h){
+
+  vStartTime<-sort(popdat[[3]][1:N2], decreasing = FALSE)
+  vOutcomeTime<-SimulateOutcomeObservedTime(vStartTime,TimeToOutcome )
+
+  assign1<-blockrand(blocksize=blocksize,N=N1,armn=armn,armlabel=armlabel)
+  data1<-matrix(NA_real_,nrow=N2,ncol=5)
+  data1[,1]<-1:N2
+  data1[,2]<-vStartTime
+  data1[,3]<-vOutcomeTime
+  data1[1:N1,4]<-assign1$arm[1:N1]
+
+  for (i in 1:(N1)){
+    for (j in 1:armn) {
+      if (data1[i, 4]==sprintf("Arm %s",j) ){
+        data1[i,5]<-rbinom(1,size=1,prob=h[[j]])
+      }
+    }
+  }
+
+  return(data1)
+}
+
+startfun1<-function(popdat,TimeToOutcome,blocksize,N1,armn,armlabel,N2,mean1,sd1){
+
+  vStartTime<-sort(popdat[[3]][1:N2], decreasing = FALSE)
+  vOutcomeTime<-SimulateOutcomeObservedTime(vStartTime,TimeToOutcome)
+
+  assign1<-blockrand(blocksize=blocksize,N=N1,armn=armn,armlabel=armlabel)
+  data1<-matrix(NA_real_,nrow=N2,ncol=5)
+  data1[,1]<-1:N2
+  data1[,2]<-vStartTime
+  data1[,3]<-vOutcomeTime
+  data1[1:N1,4]<-assign1$arm[1:N1]
+
+  for (i in 1:(N1)){
+    for (j in 1:armn) {
+      if (data1[i, 4]==j ){
+        data1[i,5]<-rnorm(1,mean1[j],sd1[j])
+      }
+    }
+  }
+
+  return(data1)
+}
+
+alofun<-function(alpha1,beta1,alpha2,beta2,alpha3,beta3,
+                 alpha4,beta4,alpha5,beta5,mat,total,armleft,side){
+  aloo<-vector("list",length(armleft))
+  if (total>0){
+    if (length(armleft)==2){
+      aloo[[1]]<-pmax1(A=mat[[1]][1,1]+get(sprintf("alpha%s",1)),
+                       B=mat[[1]][1,2]+get(sprintf("beta%s",1)),
+                       a1=mat[[armleft[2]]][1,1]+get(sprintf("alpha%s",armleft[2])),
+                       b1=mat[[armleft[2]]][1,2]+get(sprintf("beta%s",armleft[2])),side=side)
+      aloo[[2]]<-1-aloo[[1]]
+
+    }else if (length(armleft)==3){
+
+      aloo[[1]]<-pmax2(A=mat[[1]][1,1]+get(sprintf("alpha%s",1)),
+                       B=mat[[1]][1,2]+get(sprintf("beta%s",1)),
+                       a1=mat[[armleft[2]]][1,1]+get(sprintf("alpha%s",armleft[2])),
+                       b1=mat[[armleft[2]]][1,2]+get(sprintf("beta%s",armleft[2])),
+                       a2=mat[[armleft[3]]][1,1]+get(sprintf("alpha%s",armleft[3])),
+                       b2=mat[[armleft[3]]][1,2]+get(sprintf("beta%s",armleft[3])),side=side)
+
+      aloo[[2]]<-pmax2(a1=mat[[1]][1,1]+get(sprintf("alpha%s",1)),
+                       b1=mat[[1]][1,2]+get(sprintf("beta%s",1)),
+                       A=mat[[armleft[2]]][1,1]+get(sprintf("alpha%s",armleft[2])),
+                       B=mat[[armleft[2]]][1,2]+get(sprintf("beta%s",armleft[2])),
+                       a2=mat[[armleft[3]]][1,1]+get(sprintf("alpha%s",armleft[3])),
+                       b2=mat[[armleft[3]]][1,2]+get(sprintf("beta%s",armleft[3])),side=side)
+
+      aloo[[3]]<-1-aloo[[1]]-aloo[[2]]
+
+    }else if (length(armleft)==4){
+
+      aloo[[1]]<-pmax3(A=mat[[1]][1,1]+get(sprintf("alpha%s",1)),
+                       B=mat[[1]][1,2]+get(sprintf("beta%s",1)),
+                       a1=mat[[armleft[2]]][1,1]+get(sprintf("alpha%s",armleft[2])),
+                       b1=mat[[armleft[2]]][1,2]+get(sprintf("beta%s",armleft[2])),
+                       a2=mat[[armleft[3]]][1,1]+get(sprintf("alpha%s",armleft[3])),
+                       b2=mat[[armleft[3]]][1,2]+get(sprintf("beta%s",armleft[3])),
+                       a3=mat[[armleft[4]]][1,1]+get(sprintf("alpha%s",armleft[4])),
+                       b3=mat[[armleft[4]]][1,2]+get(sprintf("beta%s",armleft[4])),side=side)
+
+      aloo[[2]]<-pmax3(a1=mat[[1]][1,1]+get(sprintf("alpha%s",1)),
+                       b1=mat[[1]][1,2]+get(sprintf("beta%s",1)),
+                       A=mat[[armleft[2]]][1,1]+get(sprintf("alpha%s",armleft[2])),
+                       B=mat[[armleft[2]]][1,2]+get(sprintf("beta%s",armleft[2])),
+                       a2=mat[[armleft[3]]][1,1]+get(sprintf("alpha%s",armleft[3])),
+                       b2=mat[[armleft[3]]][1,2]+get(sprintf("beta%s",armleft[3])),
+                       a3=mat[[armleft[4]]][1,1]+get(sprintf("alpha%s",armleft[4])),
+                       b3=mat[[armleft[4]]][1,2]+get(sprintf("beta%s",armleft[4])),side=side)
+
+      aloo[[3]]<-pmax3(a1=mat[[1]][1,1]+get(sprintf("alpha%s",1)),
+                       b1=mat[[1]][1,2]+get(sprintf("beta%s",1)),
+                       a2=mat[[armleft[2]]][1,1]+get(sprintf("alpha%s",armleft[2])),
+                       b2=mat[[armleft[2]]][1,2]+get(sprintf("beta%s",armleft[2])),
+                       A=mat[[armleft[3]]][1,1]+get(sprintf("alpha%s",armleft[3])),
+                       B=mat[[armleft[3]]][1,2]+get(sprintf("beta%s",armleft[3])),
+                       a3=mat[[armleft[4]]][1,1]+get(sprintf("alpha%s",armleft[4])),
+                       b3=mat[[armleft[4]]][1,2]+get(sprintf("beta%s",armleft[4])),side=side)
+
+      aloo[[4]]<-1- aloo[[1]]-aloo[[2]]-aloo[[3]]
+
+    }else if (length(armleft)==5){
+
+      aloo[[1]]<-pmax4(A=mat[[1]][1,1]+get(sprintf("alpha%s",1)),
+                       B=mat[[1]][1,2]+get(sprintf("beta%s",1)),
+                       a1=mat[[armleft[2]]][1,1]+get(sprintf("alpha%s",armleft[2])),
+                       b1=mat[[armleft[2]]][1,2]+get(sprintf("beta%s",armleft[2])),
+                       a2=mat[[armleft[3]]][1,1]+get(sprintf("alpha%s",armleft[3])),
+                       b2=mat[[armleft[3]]][1,2]+get(sprintf("beta%s",armleft[3])),
+                       a3=mat[[armleft[4]]][1,1]+get(sprintf("alpha%s",armleft[4])),
+                       b3=mat[[armleft[4]]][1,2]+get(sprintf("beta%s",armleft[4])),
+                       a4=mat[[armleft[5]]][1,1]+get(sprintf("alpha%s",armleft[5])),
+                       b4=mat[[armleft[5]]][1,2]+get(sprintf("beta%s",armleft[5])),side=side)
+
+      aloo[[2]]<-pmax4(a1=mat[[1]][1,1]+get(sprintf("alpha%s",1)),
+                       b1=mat[[1]][1,2]+get(sprintf("beta%s",1)),
+                       A=mat[[armleft[2]]][1,1]+get(sprintf("alpha%s",armleft[2])),
+                       B=mat[[armleft[2]]][1,2]+get(sprintf("beta%s",armleft[2])),
+                       a2=mat[[armleft[3]]][1,1]+get(sprintf("alpha%s",armleft[3])),
+                       b2=mat[[armleft[3]]][1,2]+get(sprintf("beta%s",armleft[3])),
+                       a3=mat[[armleft[4]]][1,1]+get(sprintf("alpha%s",armleft[4])),
+                       b3=mat[[armleft[4]]][1,2]+get(sprintf("beta%s",armleft[4])),
+                       a4=mat[[armleft[5]]][1,1]+get(sprintf("alpha%s",armleft[5])),
+                       b4=mat[[armleft[5]]][1,2]+get(sprintf("beta%s",armleft[5])),side=side)
+
+      aloo[[3]]<-pmax4(a1=mat[[1]][1,1]+get(sprintf("alpha%s",1)),
+                       b1=mat[[1]][1,2]+get(sprintf("beta%s",1)),
+                       a2=mat[[armleft[2]]][1,1]+get(sprintf("alpha%s",armleft[2])),
+                       b2=mat[[armleft[2]]][1,2]+get(sprintf("beta%s",armleft[2])),
+                       A=mat[[armleft[3]]][1,1]+get(sprintf("alpha%s",armleft[3])),
+                       B=mat[[armleft[3]]][1,2]+get(sprintf("beta%s",armleft[3])),
+                       a3=mat[[armleft[4]]][1,1]+get(sprintf("alpha%s",armleft[4])),
+                       b3=mat[[armleft[4]]][1,2]+get(sprintf("beta%s",armleft[4])),
+                       a4=mat[[armleft[5]]][1,1]+get(sprintf("alpha%s",armleft[5])),
+                       b4=mat[[armleft[5]]][1,2]+get(sprintf("beta%s",armleft[5])),side=side)
+
+      aloo[[4]]<-pmax4(a1=mat[[1]][1,1]+get(sprintf("alpha%s",1)),
+                       b1=mat[[1]][1,2]+get(sprintf("beta%s",1)),
+                       a2=mat[[armleft[2]]][1,1]+get(sprintf("alpha%s",armleft[2])),
+                       b2=mat[[armleft[2]]][1,2]+get(sprintf("beta%s",armleft[2])),
+                       a3=mat[[armleft[3]]][1,1]+get(sprintf("alpha%s",armleft[3])),
+                       b3=mat[[armleft[3]]][1,2]+get(sprintf("beta%s",armleft[3])),
+                       A=mat[[armleft[4]]][1,1]+get(sprintf("alpha%s",armleft[4])),
+                       B=mat[[armleft[4]]][1,2]+get(sprintf("beta%s",armleft[4])),
+                       a4=mat[[armleft[5]]][1,1]+get(sprintf("alpha%s",armleft[5])),
+                       b4=mat[[armleft[5]]][1,2]+get(sprintf("beta%s",armleft[5])),side=side)
+
+      aloo[[5]]<-1-aloo[[1]]-aloo[[2]]-aloo[[3]]-aloo[[4]]
+    }
+  }else if (total==0 ){
+    for(j in 1:length(aloo)){
+      aloo[[j]]<-1/length(armleft)
+    }
+  }
+  return(aloo)
+}
+
+alofun_kn_var<-function(mat,total,armleft,side){
+  aloo<-vector("list",length(armleft))
+  if (total>0){
+    if (length(armleft)==2){
+      aloo[[1]]<-pmax1_known_var(A=mat[[1]][1,1],
+                                 B=mat[[1]][1,3],
+                                 a1=mat[[armleft[2]]][1,1],
+                                 b1=mat[[armleft[2]]][1,3],side=side)
+      aloo[[2]]<-1-aloo[[1]]
+
+    }else if (length(armleft)==3){
+
+      aloo[[1]]<-pmax2_known_var(A=mat[[1]][1,1],
+                                 B=mat[[1]][1,3],
+                                 a1=mat[[armleft[2]]][1,1],
+                                 b1=mat[[armleft[2]]][1,3],
+                                 a2=mat[[armleft[3]]][1,1],
+                                 b2=mat[[armleft[3]]][1,3],side=side)
+
+      aloo[[2]]<-pmax2_known_var(a1=mat[[1]][1,1],
+                                 b1=mat[[1]][1,3],
+                                 A=mat[[armleft[2]]][1,1],
+                                 B=mat[[armleft[2]]][1,3],
+                                 a2=mat[[armleft[3]]][1,1],
+                                 b2=mat[[armleft[3]]][1,3],side=side)
+
+      aloo[[3]]<-1-aloo[[1]]-aloo[[2]]
+
+    }else if (length(armleft)==4){
+
+      aloo[[1]]<-pmax3_known_var(A=mat[[1]][1,1],
+                                 B=mat[[1]][1,2],
+                                 a1=mat[[armleft[2]]][1,1],
+                                 b1=mat[[armleft[2]]][1,3],
+                                 a2=mat[[armleft[3]]][1,1],
+                                 b2=mat[[armleft[3]]][1,3],
+                                 a3=mat[[armleft[4]]][1,1],
+                                 b3=mat[[armleft[4]]][1,3],side=side)
+
+      aloo[[2]]<-pmax3_known_var(a1=mat[[1]][1,1],
+                                 b1=mat[[1]][1,2],
+                                 A=mat[[armleft[2]]][1,1],
+                                 B=mat[[armleft[2]]][1,3],
+                                 a2=mat[[armleft[3]]][1,1],
+                                 b2=mat[[armleft[3]]][1,3],
+                                 a3=mat[[armleft[4]]][1,1],
+                                 b3=mat[[armleft[4]]][1,3],side=side)
+
+      aloo[[3]]<-pmax3_known_var(a1=mat[[1]][1,1],
+                                 b1=mat[[1]][1,2],
+                                 a2=mat[[armleft[2]]][1,1],
+                                 b2=mat[[armleft[2]]][1,3],
+                                 A=mat[[armleft[3]]][1,1],
+                                 B=mat[[armleft[3]]][1,3],
+                                 a3=mat[[armleft[4]]][1,1],
+                                 b3=mat[[armleft[4]]][1,3],side=side)
+
+      aloo[[4]]<-1- aloo[[1]]-aloo[[2]]-aloo[[3]]
+
+    }else if (length(armleft)==5){
+
+      aloo[[1]]<-pmax4_known_var(A=mat[[1]][1,1],
+                                 B=mat[[1]][1,],
+                                 a1=mat[[armleft[2]]][1,1],
+                                 b1=mat[[armleft[2]]][1,3],
+                                 a2=mat[[armleft[3]]][1,1],
+                                 b2=mat[[armleft[3]]][1,3],
+                                 a3=mat[[armleft[4]]][1,1],
+                                 b3=mat[[armleft[4]]][1,3],
+                                 a4=mat[[armleft[5]]][1,1],
+                                 b4=mat[[armleft[5]]][1,3],side=side)
+
+      aloo[[2]]<-pmax4_known_var(a1=mat[[1]][1,1],
+                                 b1=mat[[1]][1,2],
+                                 A=mat[[armleft[2]]][1,1],
+                                 B=mat[[armleft[2]]][1,3],
+                                 a2=mat[[armleft[3]]][1,1],
+                                 b2=mat[[armleft[3]]][1,3],
+                                 a3=mat[[armleft[4]]][1,1],
+                                 b3=mat[[armleft[4]]][1,3],
+                                 a4=mat[[armleft[5]]][1,1],
+                                 b4=mat[[armleft[5]]][1,3],side=side)
+
+      aloo[[3]]<-pmax4_known_var(a1=mat[[1]][1,1],
+                                 b1=mat[[1]][1,3],
+                                 a2=mat[[armleft[2]]][1,1],
+                                 b2=mat[[armleft[2]]][1,3],
+                                 A=mat[[armleft[3]]][1,1],
+                                 B=mat[[armleft[3]]][1,3],
+                                 a3=mat[[armleft[4]]][1,1],
+                                 b3=mat[[armleft[4]]][1,3],
+                                 a4=mat[[armleft[5]]][1,1],
+                                 b4=mat[[armleft[5]]][1,3],side=side)
+
+      aloo[[4]]<-pmax4_known_var(a1=mat[[1]][1,1],
+                                 b1=mat[[1]][1,3],
+                                 a2=mat[[armleft[2]]][1,1],
+                                 b2=mat[[armleft[2]]][1,3],
+                                 a3=mat[[armleft[3]]][1,1],
+                                 b3=mat[[armleft[3]]][1,3],
+                                 A=mat[[armleft[4]]][1,1],
+                                 B=mat[[armleft[4]]][1,3],
+                                 a4=mat[[armleft[5]]][1,1],
+                                 b4=mat[[armleft[5]]][1,3],side=side)
+
+      aloo[[5]]<-1-aloo[[1]]-aloo[[2]]-aloo[[3]]-aloo[[4]]
+    }
+  }else if (total==0 ){
+    for(j in 1:length(aloo)){
+      aloo[[j]]<-1/length(armleft)
+    }
+  }
+  return(aloo)
+}
+
+
+allocation_probabilities<-function(GI_binary,tt,data1,K1,I0,block,noRuns2,rule){
+
+  index<-matrix(0,nrow=K1,1)
+  selected<-matrix(0,nrow=noRuns2,block)
+  prob<-matrix(0,K1,block)
+
+  for (j in 1:noRuns2) {
+    n=matrix(rowSums(I0)+2,nrow=nrow(I0),1)
+    s=matrix(I0[,1]+1,nrow=nrow(I0),1)
+    f=matrix(I0[,2]+1,nrow=nrow(I0),1)
+
+    for (t1 in 0: (block-1)){
+      for (k in 1:K1){
+        index[k,1]=GI_binary[f[k,1],s[k,1]]
+      }
+      max_index=max(index)
+      kmax=min(match(max(index), index))
+      idx= which(as.vector(index)==max(index))
+
+      if (length(idx)>1){
+        posi=sample(1:length(idx),1)
+        kmax=idx[posi]
+        max_index=as.vector(index)[kmax]
+      }
+      selected[j,t1+1]=kmax
+      snext=s
+      fnext=f
+      nnext=n
+
+      if (rule=='FLGI PM' |rule=='Controlled FLGI'){
+        probSuc_kmax=s[kmax,1]/(s[kmax,1]+f[kmax,1])
+        if(runif(1)<=probSuc_kmax){
+          Pos=1
+        }else{
+          Pos=0
+        }
+      }else if (rule=='FLGI PD'){
+        probSuc_kmax=rbeta(1,s[kmax,1],f[kmax,1])
+        Pos= rbinom(1,1,probSuc_kmax)
+      }
+      nnext[kmax,1]=n[kmax,1]+1
+
+      data1[tt*block+t1+1,4]=kmax
+      data1[tt*block+t1+1,5]=Pos
+      total1<-sum(as.numeric(data1[,3])<=as.numeric(data1[tt*block+t1+1,2]))
+
+      for (k in 1:K1){
+        if (total1>0){
+          dataa<-matrix(data1[which(as.numeric(data1[,3])<=as.numeric(data1[tt*block+t1+1,2])),],ncol=5)
+          snext[k,1]=nrow(dataa[dataa[,4]==k & dataa[,5]==1,,drop=F])+2
+          fnext[k,1]=nrow(dataa[dataa[,4]==k & dataa[,5]==0,,drop=F])+2
+
+        }else if (total1==0){
+          snext[k,1]=s[k,1]
+          fnext[k,1]=f[k,1]
+        }
+      }
+
+      s=snext
+      f=fnext
+      n=nnext
+    }
+  }
+
+  for (i in 1:block){
+    for(k in 1:K1){
+      prob[k,i]=sum(selected[,i]==k)/noRuns2
+    }
+  }
+
+  allocation_probabilities=rowMeans(prob)
+
+  return(allocation_probabilities)
+}
+
+allocation_probabilities1<-function(GI_binary,tt,data1,K1,I0,block,noRuns2,rule){
+
+  index<-matrix(0,nrow=K1,1)
+  selected<-matrix(0,nrow=noRuns2,block)
+  prob<-matrix(0,K1,block)
+
+  for (j in 1:noRuns2) {
+    n=matrix(rowSums(I0)+2,nrow=nrow(I0),1)
+    s=matrix(I0[,1]+1,nrow=nrow(I0),1)
+    f=matrix(I0[,2]+1,nrow=nrow(I0),1)
+
+    for (t1 in 0: (block-1)){
+      for (k in 1:K1){
+        index[k,1]=GI_binary[f[k,1],s[k,1]]
+      }
+      max_index=max(index)
+      kmax=min(match(max(index), index))
+      idx= which(as.vector(index)==max(index))
+      if (length(idx)>1){
+        posi=sample(1:length(idx),1)
+        kmax=idx[posi]
+        max_index=as.vector(index)[kmax]
+      }
+      selected[j,t1+1]=kmax
+      snext=s
+      fnext=f
+      nnext=n
+      if (rule=='FLGI PM'|rule=='Controlled FLGI'){
+        probSuc_kmax=s[kmax,1]/(s[kmax,1]+f[kmax,1])
+        if(runif(1)<=probSuc_kmax){
+          Pos=1
+        }else{
+          Pos=0
+        }
+      }else if (rule=='FLGI PD'){
+        probSuc_kmax=rbeta(1,s[kmax,1],f[kmax,1])
+        Pos= rbinom(1,1,probSuc_kmax)
+      }
+      nnext[kmax,1]=n[kmax,1]+1
+      data1[tt*block+t1+1,4]=kmax+1
+      data1[tt*block+t1+1,5]=Pos
+      total1<-sum(as.numeric(data1[,3])<=as.numeric(data1[tt*block+t1+1,2]))
+
+      for (k in 1:K1){
+        if (total1>0){
+          dataa<-matrix(data1[which(as.numeric(data1[,3])<=as.numeric(data1[tt*block+t1+1,2])),],ncol=5)
+          snext[k,1]=nrow(dataa[dataa[,4]==k+1 & dataa[,5]==1,,drop=F])+2
+          fnext[k,1]=nrow(dataa[dataa[,4]==k+1 & dataa[,5]==0,,drop=F])+2
+
+        }else if (total1==0){
+          snext[k,1]=s[k,1]
+          fnext[k,1]=f[k,1]
+        }
+      }
+      s=snext
+      f=fnext
+      n=nnext
+    }
+  }
+
+  for (i in 1:block){
+    for(k in 1:K1){
+      prob[k,i]=sum(selected[,i]==k)/noRuns2
+    }
+  }
+
+  allocation_probabilities=rowMeans(prob)
+
+  return(allocation_probabilities)
+}
+
+allocation_probabilities_unk_var <- function(GI_Normal_unknown,tt,data1,arms,b,runs,
+                                             posteriormean,posteriornn,posteriorsd,prior_n,
+                                             prior_mean1,prior_sd1){
+
+
+  action <- matrix(0, runs, arms)
+  posterior_sd1=posteriorsd
+  posterior_mean1=posteriormean
+  posterior_nn1=posteriornn
+  prior_n1=prior_n
+
+  for (i in 1:runs){
+    GI<-rep(NA,arms)
+    nn<-rep(0,arms)
+
+    for (k in 1:arms){
+      GI_Std <- GI_Normal_unknown[ posterior_nn1[k] +prior_n1[k]]
+      GI[k]  <- posterior_mean1[k] + posterior_sd1[k]*GI_Std
+    }
+
+    prior_mean<-prior_mean1
+    prior_nn<-rep(0,arms)
+    prior_sd<-prior_sd1
+
+
+    for (pts in 1:b){
+      optimal_action <- which.is.max(GI)
+      action[ i , optimal_action ] <- action[ i , optimal_action ] + 1
+      data1[tt*b+pts,4]=optimal_action
+      if (pts==1){
+        outcome <- rnorm(1,mean=posterior_mean1[optimal_action],sd=posterior_sd1[optimal_action])
+      }else{
+        outcome <- rnorm(1,mean=prior_mean[optimal_action],sd=prior_sd[optimal_action])
+      }
+
+      data1[tt*b+pts,5]=outcome
+      dataa<-matrix(data1[which(as.numeric(data1[,3])<=as.numeric(data1[tt*b+pts,2])),],ncol=5)
+
+      for (k in 1:arms){
+        dataaa<-matrix(dataa[order(dataa[,3]),],ncol=5)
+        nn[k]=nrow(dataaa[dataaa[,4]==k ,,drop=F])
+        if (nn[k]>0){
+          dataa1<-dataaa[dataaa[,4]==k,5]
+          posterior_mean<-rep(NA,nn[k])
+          posterior_sd<-rep(NA,nn[k])
+          posterior_nn<-rep(NA,nn[k])
+
+          for (kk in 0:(nn[k]-1)){
+            posterior_mean[kk+1] <- ((prior_n1[k]+kk)*prior_mean[k]+dataa1[kk+1])/(prior_n1[k]+kk+1)
+            posterior_sd[kk+1] <- sqrt(((prior_sd[k])^2)*(prior_n1[k]+kk-1)/(prior_n1[k]+kk) +
+                                         (dataa1[kk+1]-prior_mean[k])^2/(prior_n1[k]+kk+1))
+            posterior_nn[kk+1]<-prior_n1[k]+kk
+            prior_mean[k]<-posterior_mean[kk+1]
+            prior_sd[k]<-posterior_sd[kk+1]
+          }
+          prior_mean[k]<-posterior_mean[nn[k]]
+          prior_nn[k]<-posterior_nn[nn[k]]
+          prior_sd[k]<-posterior_sd[nn[k]]
+          GI_Std  <- GI_Normal_unknown[ prior_nn[k]+1 ]#
+          GI[k]   <- prior_mean[k] + prior_sd[k]*GI_Std
+
+        }else if (nn[k]==0){
+
+          prior_mean[k]<-prior_mean1[k]
+          prior_nn[k]<-prior_n1[k]
+          prior_sd[k]<-prior_sd1[k]
+          GI_Std  <- GI_Normal_unknown[prior_nn[k]]
+          GI[k]   <- prior_mean[k] + prior_sd[k]*GI_Std
+
+        }
+      }
+
+    }
+  }
+  flgi_probs <- apply(action, 2, mean) / b
+  return(flgi_probs)
+
+}
+
+allocation_probabilities_unk_var1 <- function(GI_Normal_unknown,tt,data1,arms,b,runs,
+                                              posteriormean,posteriornn,posteriorsd,prior_n,
+                                              prior_mean1,prior_sd1){
+
+
+  action <- matrix(0, runs, arms)
+  posterior_sd1=posteriorsd
+  posterior_mean1=posteriormean
+  posterior_nn1=posteriornn
+  prior_n1=prior_n
+
+  for (i in 1:runs){
+    GI<-rep(NA,arms)
+    nn<-rep(0,arms)
+
+    for (k in 2:arms){
+      GI_Std <- GI_Normal_unknown[ posterior_nn1[k] +prior_n1[k]]
+      GI[k]  <- posterior_mean1[k] + posterior_sd1[k]*GI_Std
+    }
+
+    prior_mean<-prior_mean1
+    prior_nn<-rep(0,arms)
+    prior_sd<-prior_sd1
+
+
+    for (pts in 1:b){
+      optimal_action <- which.is.max(!is.na(GI))
+      action[ i , optimal_action ] <- action[ i , optimal_action ] + 1
+      data1[tt*b+pts,4]=optimal_action
+      #outcome <- rnorm(1,mean=mean1[optimal_action],sd=sd1[optimal_action])
+      if (pts==1){
+        outcome <- rnorm(1,mean=posterior_mean1[optimal_action],sd=posterior_sd1[optimal_action])
+      }else{
+        outcome <- rnorm(1,mean=prior_mean[optimal_action],sd=prior_sd[optimal_action])
+      }
+
+      data1[tt*b+pts,5]=outcome
+      dataa<-matrix(data1[which(as.numeric(data1[,3])<=as.numeric(data1[tt*b+pts,2])),],ncol=5)
+
+      for (k in 2:arms){
+        dataaa<-matrix(dataa[order(dataa[,3]),],ncol=5)
+        nn[k]=nrow(dataaa[dataaa[,4]==k ,,drop=F])
+        if (nn[k]>0){
+          dataa1<-dataaa[dataaa[,4]==k,5]
+          posterior_mean<-rep(NA,nn[k])
+          posterior_sd<-rep(NA,nn[k])
+          posterior_nn<-rep(NA,nn[k])
+
+          for (kk in 0:(nn[k]-1)){
+            posterior_mean[kk+1] <- ((prior_n1[k]+kk)*prior_mean[k]+dataa1[kk+1])/(prior_n1[k]+kk+1)
+            posterior_sd[kk+1] <- sqrt(((prior_sd[k])^2)*(prior_n1[k]+kk-1)/(prior_n1[k]+kk) +
+                                         (dataa1[kk+1]-prior_mean[k])^2/(prior_n1[k]+kk+1))
+            posterior_nn[kk+1]<-prior_n1[k]+kk
+            prior_mean[k]<-posterior_mean[kk+1]
+            prior_sd[k]<-posterior_sd[kk+1]
+          }
+          prior_mean[k]<-posterior_mean[nn[k]]
+          prior_nn[k]<-posterior_nn[nn[k]]
+          prior_sd[k]<-posterior_sd[nn[k]]
+          GI_Std  <- GI_Normal_unknown[ prior_nn[k]+1 ]#
+          GI[k]   <- prior_mean[k] + prior_sd[k]*GI_Std
+
+        }else if (nn[k]==0){
+
+          prior_mean[k]<-prior_mean1[k]
+          prior_nn[k]<-prior_n1[k]
+          prior_sd[k]<-prior_sd1[k]
+          GI_Std  <- GI_Normal_unknown[prior_nn[k]]
+          GI[k]   <- prior_mean[k] + prior_sd[k]*GI_Std
+
+        }
+      }
+
+    }
+  }
+  flgi_probs <- apply(action, 2, mean) / b
+  return(flgi_probs[2:arms])
+
+}
+
+
+
+
+allocation_probabilities_kn_var <- function(GI_Normal_known,tt,data1,arms,b,runs,d,prior_mean,prior_n,mean1,sd1){
+
+  action <- matrix(0, runs, arms)
+  nn<-rep(NA,arms)
+  posterior_mean<-rep(NA,arms)
+  GI<-rep(NA,arms)
+  sample_mean<-rep(NA,arms)
+
+  for (k in 1:arms){
+    nn[k]=nrow(data1[data1[,4]==k,,drop=F])
+    if (nn[k]>0){
+      dataa<-matrix(data1[which(as.numeric(data1[,3])<=as.numeric(data1[tt*b,2])),],ncol=5)
+      nn[k]=nrow(dataa[dataa[,4]==k,,drop=F])+prior_n[k]
+      posterior_mean[k]<-(sum(dataa[dataa[,4]==k,5])+prior_mean[k]*prior_n[k]) / nn[k]
+    }else if (nn[k]==0){
+      nn[k]=prior_n[k]
+      posterior_mean[k]<-prior_mean[k]
+    }
+  }
+
+
+  for (i in 1:runs){
+
+    GI <- rep(NA, arms)
+
+    for (k in 1:arms){
+      indexs<-nn[k]
+      GI_Std <- GI_Normal_known[ indexs]
+      GI[k]  <- posterior_mean[k] + sd1[k]*GI_Std
+    }
+
+
+    for (pts in 1:b){
+
+      optimal_action <- which.is.max(GI)
+      action[ i , optimal_action ] <- action[ i , optimal_action ] + 1
+      data1[tt*b+pts,4]=optimal_action
+      outcome <- rnorm(1, posterior_mean[optimal_action], sd1[optimal_action])
+      data1[tt*b+pts,5]=outcome
+      dataa<-matrix(data1[which(as.numeric(data1[,3])<=as.numeric(data1[tt*b+pts,2])),],ncol=5)
+
+      for (k in 1:arms){
+        nn[k]=nrow(dataa[dataa[,4]==k,,drop=F])
+        if (nn[k]>0){
+          nn[k]=nrow(dataa[dataa[,4]==k,,drop=F])+prior_n[k]
+          sample_mean[k] <- (sum(dataa[dataa[,4]==k,5])+prior_mean[k]*prior_n[k]) / nn[k]
+          indexs<-nn[k]
+          GI_Std  <- GI_Normal_known[ indexs ]
+          GI[k]   <- sample_mean[k] + sd1[k]*GI_Std
+        }else if (nn[k]==0){
+
+          nn[k]=prior_n[k]
+          sample_mean[k] <- prior_mean[k]
+          GI_Std  <- GI_Normal_known[ nn[k] ]
+          GI[k]   <- sample_mean[k] + sd1[k]*GI_Std
+        }
+      }
+    }
+  }
+  flgi_probs <- apply(action, 2, mean) / b
+  return(flgi_probs)
+
+}
+
+allocation_probabilities_kn_var1 <- function(GI_Normal_known,tt,data1,arms,b,runs,d,prior_mean,prior_n,mean1,sd1){
+
+  action <- matrix(0, runs, arms)
+  nn<-rep(NA,arms)
+  posterior_mean<-rep(NA,arms)
+  GI<-rep(NA,arms)
+  sample_mean<-rep(NA,arms)
+
+  for (k in 1:arms){
+    nn[k]=nrow(data1[data1[,4]==k,,drop=F])
+    if (nn[k]>0){
+      dataa<-matrix(data1[which(as.numeric(data1[,3])<=as.numeric(data1[tt*b,2])),],ncol=5)
+      nn[k]=nrow(dataa[dataa[,4]==k,,drop=F])+prior_n[k]
+      posterior_mean[k]<-(sum(dataa[dataa[,4]==k,5])+prior_mean[k]*prior_n[k]) / nn[k]
+    }else if (nn[k]==0){
+      nn[k]=prior_n[k]
+      posterior_mean[k]<-prior_mean[k]
+    }
+  }
+
+
+  for (i in 1:runs){
+
+    GI <- rep(NA, arms)
+
+    for (k in 2:arms){
+      indexs<-nn[k]
+      GI_Std <- GI_Normal_known[ indexs]
+      GI[k]  <- posterior_mean[k] + sd1[k]*GI_Std
+    }
+
+
+    for (pts in 1:b){
+
+      optimal_action <- which.is.max(GI)
+      action[ i , optimal_action ] <- action[ i , optimal_action ] + 1
+      data1[tt*b+pts,4]=optimal_action
+      outcome <- rnorm(1, posterior_mean[optimal_action], sd1[optimal_action])
+      data1[tt*b+pts,5]=outcome
+      dataa<-matrix(data1[which(as.numeric(data1[,3])<=as.numeric(data1[tt*b+pts,2])),],ncol=5)
+
+      for (k in 2:arms){
+        nn[k]=nrow(dataa[dataa[,4]==k,,drop=F])
+        if (nn[k]>0){
+          nn[k]=nrow(dataa[dataa[,4]==k,,drop=F])+prior_n[k]
+          sample_mean[k] <- (sum(dataa[dataa[,4]==k,5])+prior_mean[k]*prior_n[k]) / nn[k]
+          indexs<-nn[k]
+          GI_Std  <- GI_Normal_known[ indexs ]
+          GI[k]   <- sample_mean[k] + sd1[k]*GI_Std
+        }else if (nn[k]==0){
+
+          nn[k]=prior_n[k]
+          sample_mean[k] <- prior_mean[k]
+          GI_Std  <- GI_Normal_known[ nn[k] ]
+          GI[k]   <- sample_mean[k] + sd1[k]*GI_Std
+        }
+      }
+    }
+  }
+  flgi_probs <- apply(action, 2, mean) / b
+  return(flgi_probs[2:arms])
+
+}
+
+###which.is.max is from the nnet package
+which.is.max <- function(x)
+{
+  y <- seq_along(x)[x == max(x)]
+  if(length(y) > 1L) sample(y, 1L) else y
+}
+
+which.is.min <- function(x)
+{
+  y <- seq_along(x)[x == min(x)]
+  if(length(y) > 1L) sample(y, 1L) else y
+}

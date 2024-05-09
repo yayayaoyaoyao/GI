@@ -1,0 +1,716 @@
+pacman::p_load(data.table,dplyr,tidyverse,ggplot2,plotROC,ROCR,pROC,yardstick,boot)
+load('C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/gsdz.Rdata')
+options(scipen=999)
+plotfun1<-function(datin,method,hypo) {#,enrollrate1
+  
+  if (method=='ER'){
+    
+  sim<-do.call(rbind,lapply(datin,read.csv,stringsAsFactors= TRUE))
+  sim<-sim[sim$proportion1==0.5 & sim$proportion2==0 ,]%>% #& sim$enrollrate==enrollrate1
+    select(Phi,Phi0,decision,h0decision)
+  simh1<-sim%>%select(Phi,decision)%>%mutate(dnum=1)
+  simh0<-sim%>%select(Phi0,h0decision)%>%rename('Phi'='Phi0','decision'='h0decision')%>%mutate(dnum=0)  
+  simf<-rbind(simh0,simh1)
+
+ # index<-order(simf$Phi,simf$decision)
+  # simf<-simf[index,]
+  # simf$rank1<-1:nrow(simf)
+  # simf<-simf %>% select('rank1','dnum','decision')%>%rename('Phi'='rank1')
+  
+ # simf$dnum<-ifelse(simf$decision=='Treatment',1,0)
+ # simf$dnum[1:3000]<-1
+ # simf$dnum[3001:6000]<-0
+  
+  } else if (method=='GSD'){
+    
+    sim<-do.call(rbind,lapply(datin,read.csv,stringsAsFactors= TRUE))
+    sim<-sim[sim$proportion1==0.5 & sim$proportion2==0 ,]%>% #&  sim$enrollrate==enrollrate1
+      select(Phi,stopseq2,decision2,Phi0,stopseq02,h0decision2)
+    
+    simh1<-sim%>%select(Phi,stopseq2,decision2,)%>%
+      rename('decision'='decision2','stopseq'='stopseq2')%>%mutate(dnum=1)
+    simh0<-sim%>%select(Phi0,stopseq02,h0decision2)%>%
+      rename('Phi'='Phi0','decision'='h0decision2','stopseq'='stopseq02')%>%mutate(dnum=0)  
+    simf<-rbind(simh0,simh1)
+    simf$decision1<-ifelse(simf$decision==2,'Treatment','Control')
+    p1<-as.numeric(substr(hypo,1,3))
+    p2<-as.numeric(substr(hypo,6,8))
+    zz<-gsdz[gsdz[,'p1']==p1 & gsdz[,'p2']==p2,3]
+    interimn<-gsdz[gsdz[,'p1']==p1 & gsdz[,'p2']==p2,4]
+    simf$boundary<-ifelse(simf$Phi>zz, 1,-1)
+    index<-order((interimn-simf$stopseq)*simf$boundary, simf$Phi)
+    simf<-simf[index,]
+    simf$rank1<-1:nrow(simf)
+    #simf$dnum<-ifelse(simf$decision1=='Treatment',1,0)
+    #simf$dnum[1:3000]<-1
+    #simf$dnum[3001:6000]<-0
+    #simf$rank1<-frank(simf, stopseq, Phi, ties.method="min")#min,average
+    simf<-simf %>% select('rank1','dnum','decision1')%>%rename('Phi'='rank1','decision'='decision1')
+   # simf<-simf %>% select('decision1','Phi','dnum')%>%rename('decision'='decision1')
+    
+  } else if (method=='PTW'){
+    
+    sim<-do.call(rbind,lapply(datin,read.csv,stringsAsFactors= TRUE))
+    sim<-sim[sim$proportion1==0.5 & sim$proportion2==0 ,]%>% #& sim$enrollrate==enrollrate1
+      select(Phi,Phi0,decision,h0decision)
+    simh1<-sim%>%select(Phi,decision)%>%mutate(dnum=1)
+    simh0<-sim%>%select(Phi0,h0decision)%>%rename('Phi'='Phi0','decision'='h0decision') %>%mutate(dnum=0) 
+    simf<-rbind(simh0,simh1)
+
+   # simf$dnum<-ifelse(simf$decision=='Treatment',1,0)
+   # simf$dnum[1:3000]<-1
+   # simf$dnum[3001:6000]<-0
+  }else if (method=='BRAR'){
+    sim<-do.call(rbind,lapply(datin,read.csv,stringsAsFactors= TRUE))
+    sim<-sim[sim$proportion1==0.5 & sim$proportion2==0 ,]%>% #& sim$enrollrate==enrollrate1
+      select(phi2,phi02,decision2,h0decision2)
+    simh1<-sim%>%select(phi2,decision2)%>%rename('decision'='decision2','Phi'='phi2')%>%mutate(dnum=1)
+    simh0<-sim%>%select(phi02,h0decision2)%>%rename('Phi'='phi02','decision'='h0decision2')%>%mutate(dnum=0)
+    simf<-rbind(simh0,simh1)
+    
+  }else if (method=='FLGI'){
+    sim<-do.call(rbind,lapply(datin,read.csv,stringsAsFactors= TRUE))
+    sim<-sim[sim$proportion1==0.5 & sim$proportion2==0 ,]%>% #& sim$enrollrate==enrollrate1
+      select(Phi,Phi0,decision2,h0decision2)
+    simh1<-sim%>%select(Phi,decision2)%>%rename('decision'='decision2')%>%mutate(dnum=1)
+    simh0<-sim%>%select(Phi0,h0decision2)%>%rename('Phi'='Phi0','decision'='h0decision2')%>%mutate(dnum=0)
+    simf<-rbind(simh0,simh1)
+   # simf$dnum[1:3000]<-1
+   # simf$dnum[3001:6000]<-0
+    simf$decision<-ifelse(simf$decision==1,'Treatment','Control')
+
+  }else if (method=='DABCD'){
+    sim<-do.call(rbind,lapply(datin,read.csv,stringsAsFactors= TRUE))
+    sim<-sim[sim$proportion1==0.5 & sim$proportion2==0 ,]%>% #& sim$enrollrate==enrollrate1
+      select(phi2,phi02,decision2,h0decision2)
+    simh1<-sim%>%select(phi2,decision2)%>%rename('decision'='decision2','Phi'='phi2')%>%mutate(dnum=1)
+    simh0<-sim%>%select(phi02,h0decision2)%>%rename('Phi'='phi02','decision'='h0decision2')%>%mutate(dnum=0)
+    simf<-rbind(simh0,simh1)
+    simf$decision<-ifelse(simf$decision==1,'Treatment','Control')
+  }
+  
+  return(simf)
+}
+
+
+plotfun2<-function(pattern0,patterna,patternb,patternc,patternd,patterne,patha,heightn,widthn,delay1,hypo) {#,enrollrate1
+
+  if (delay1=='No Delay'){
+    files01<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/equal_randomisation/delayed_response_0",pattern = pattern0,full.names=TRUE)
+    files1<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/GSD/delayed_response_00",pattern = patterna,full.names=TRUE)
+    files2<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/ptw/delayed_response_0",pattern = patternb,full.names=TRUE)
+    files3<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/BRAR/beta1_1/delayed_response_0/turning_parameters_n_2N",pattern = patternc,full.names=TRUE)
+   # files41<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/FLGI/FLGI_PM/df_0/block_size_2/delayed_response",pattern = patternd,full.names=TRUE)
+  #  files42<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/FLGI/FLGI_PM/df_0_995/block_size_2/delayed_response",pattern = patternd,full.names=TRUE)
+    files51<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_1/delayed_response_0",pattern = patterne,full.names=TRUE)
+    files52<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/DABCD/w_q/delayed_response_0",pattern = patterne,full.names=TRUE)
+    
+    sim01<-plotfun1(files01,method='ER',hypo=hypo)%>% mutate(method='ER')#,enrollrate1=enrollrate1
+    sim11<-plotfun1(files1,method='GSD',hypo=hypo)%>% mutate(method='GSD')
+    sim22<-plotfun1(files2,method='PTW',hypo=hypo)%>%  mutate(method='PTW')
+    sim33<-plotfun1(files3,method='BRAR',hypo=hypo)%>%  mutate(method='BRAR Beta(1,1) TP=n/2N')
+    
+  #  sim441<-plotfun1(files41,method='FLGI',hypo=hypo)%>%  mutate(method='FLGI DF=0 BS=2')
+  #  sim442<-plotfun1(files42,method='FLGI',hypo=hypo)%>%  mutate(method='FLGI DF=0.995 BS=2')
+    sim551<-plotfun1(files51,method='DABCD',hypo=hypo)%>%  mutate(method='DABCD Neyman')
+    sim552<-plotfun1(files52,method='DABCD',hypo=hypo)%>%  mutate(method='DABCD RSIHR')
+    
+    }
+  
+  if (delay1=='1 Month Delay'){
+    files02<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/equal_randomisation/delayed_response_1",pattern = pattern0,full.names=TRUE)
+    files3<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/GSD/delayed_response_11",pattern = patterna,full.names=TRUE)
+    files4<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/ptw/delayed_response_1",pattern = patternb,full.names=TRUE)
+    files43<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/FLGI/FLGI_PM/df_0/block_size_2/delayed_response_1",pattern = patternd,full.names=TRUE)
+    files44<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/FLGI/FLGI_PM/df_0_995/block_size_2/delayed_response_1",pattern = patternd,full.names=TRUE)
+    
+    sim01<-plotfun1(files02,method='ER',hypo=hypo)%>% mutate(method='ER1')
+    sim11<-plotfun1(files3,method='GSD',hypo=hypo)%>% mutate(method='GSD1')
+    sim22<-plotfun1(files4,method='PTW',hypo=hypo)%>%  mutate(method='PTW1')
+    sim441<-plotfun1(files43,method='FLGI',hypo=hypo)%>%  mutate(method='FLGI1 DF=0 BS=2')
+    sim442<-plotfun1(files44,method='FLGI',hypo=hypo)%>%  mutate(method='FLGI1 DF=0.995 BS=2')
+    
+ }
+
+  if (delay1=='2 Months Delay'){
+    files03<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/equal_randomisation/delayed_response_2",pattern = pattern0,full.names=TRUE)
+    files5<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/GSD/delayed_response_22",pattern = patterna,full.names=TRUE)
+    files6<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/ptw/delayed_response_2",pattern = patternb,full.names=TRUE)
+    files45<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/FLGI/FLGI_PM/df_0/block_size_2/delayed_response_2",pattern = patternd,full.names=TRUE)
+    files46<-list.files("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/FLGI/FLGI_PM/df_0_995/block_size_2/delayed_response_2",pattern = patternd,full.names=TRUE)
+    
+    sim01<-plotfun1(files03,method='ER',hypo=hypo)%>% mutate(method='ER2')
+    sim11<-plotfun1(files5,method='GSD',hypo=hypo)%>% mutate(method='GSD2')
+    sim22<-plotfun1(files6,method='PTW',hypo=hypo)%>%  mutate(method='PTW2')
+    sim441<-plotfun1(files45,method='FLGI',hypo=hypo)%>%  mutate(method='FLGI2 DF=0 BS=2')
+    sim442<-plotfun1(files46,method='FLGI',hypo=hypo)%>%  mutate(method='FLGI2 DF=0.995 BS=2')
+    
+  }
+  simm<-rbind(sim01,sim11,sim22,sim33,sim551,sim552)
+ # simm<-rbind(sim01,sim11,sim22,sim441,sim442)#[,-4]
+
+  
+   p<-ggplot(simm, aes(d =dnum,m =Phi,  color = method)) + geom_roc(n.cuts = 0) + style_roc(xlab = "1-Specificity",ylab ="Sensitivity" )+
+   ggtitle(paste0("ROC Curves for Five Methods with ",delay1," Response","\n","Hypothesis:",hypo) )#, "   Enrollrate:", enrollrate1
+
+   bootf1 <- function(datin){
+     
+     data1 <- datin[c(sample(1:3000,size=1000,replace=T),sample(3000:6000,size=1000,replace=T)),]
+     
+   # data1 <- sim01[c(sample(1:3000,size=500,replace=T),sample(3000:6000,size=500,replace=T)),]
+    # data2 <- sim11[c(sample(1:3000,size=500,replace=T),sample(3000:6000,size=500,replace=T)),]
+    # data3 <- sim22[c(sample(1:3000,size=500,replace=T),sample(3000:6000,size=500,replace=T)),]
+    # data6 <- sim551[c(sample(1:3000,size=500,replace=T),sample(3000:6000,size=500,replace=T)),]
+    # data7 <- sim552[c(sample(1:3000,size=500,replace=T),sample(3000:6000,size=500,replace=T)),]
+    # data8 <- sim33[c(sample(1:3000,size=500,replace=T),sample(3000:6000,size=500,replace=T)),]
+    
+    auc1<-roc(data1$dnum,data1$Phi)#ER
+    # auc2<-roc(data2$dnum,data2$Phi)#GSD
+    # auc3<-roc(data3$dnum,data3$Phi)#PTW
+    # # auc4<-roc(sim441$dnum,sim441$Phi)#FLGI1 DF=0 BS=2
+    # # auc5<-roc(sim442$dnum,sim442$Phi)#FLGI1 DF=0.995 BS=2
+    # auc6<-roc(data6$dnum,data6$Phi)#Neyman
+    # auc7<-roc(data7$dnum,data7$Phi)#RSIHR
+    # auc8<-roc(data8$dnum,data8$Phi) #brar
+    
+    aucs1<-as.numeric(auc1$specificities)
+    # aucs2<-as.numeric(auc2$specificities)
+    # aucs3<-as.numeric(auc3$specificities)
+    # #  aucs4<-as.numeric(auc4$specificities)
+    # #  aucs5<-as.numeric(auc5$specificities)
+    # aucs6<-as.numeric(auc6$specificities)
+    # aucs7<-as.numeric(auc7$specificities)
+    # aucs8<-as.numeric(auc8$specificities)
+    pp1<- round(mean(auc1$sensitivities[which(near(aucs1, 0.975, tol=0.000000001))]),3)
+    # pp2<- round(mean( auc2$sensitivities[which(near(aucs2, 0.975, tol=0.000000001))]),3)
+    # pp3<- round(mean( auc3$sensitivities[which(near(aucs3, 0.975, tol=0.000000001))]),3)
+    # # pp4<- round(mean( auc4$sensitivities[which(near(aucs4, 0.975, tol=0.000000001))]),3)
+    # # pp5<- round(mean( auc5$sensitivities[which(near(aucs5, 0.975, tol=0.000000001))]),3)
+    # pp6<- round(mean( auc6$sensitivities[which(near(aucs6, 0.975, tol=0.000000001))]),3)
+    # pp7<- round(mean( auc7$sensitivities[which(near(aucs7, 0.975, tol=0.000000001))]),3)
+    # pp8<- round(mean( auc8$sensitivities[which(near(aucs8, 0.975, tol=0.000000001))]),3)
+    
+    if (is.nan(pp1)){
+      pp1<- round(mean(auc1$sensitivities[which(aucs1==max(aucs1[aucs1<= 0.975]))]),3)
+    }
+    # if (is.nan(pp2)){
+    #   pp2<- round(mean(auc2$sensitivities[which(aucs2==max(aucs2[aucs2<= 0.975]))]),3)
+    # }
+    # if (is.nan(pp3)){
+    #   pp3<- round(mean(auc3$sensitivities[which(aucs3==max(aucs3[aucs3<= 0.975]))]),3)
+    # }
+    # # if (is.nan(pp4)){
+    # #   pp4<- round(mean(auc4$sensitivities[which(aucs4==max(aucs4[aucs4<= 0.975]))]),3)
+    # # }
+    # # if (is.nan(pp5)){
+    # #   pp5<- round(mean(auc5$sensitivities[which(aucs5==max(aucs5[aucs5<= 0.975]))]),3)
+    # # }
+    # if (is.nan(pp6)){
+    #   pp6<- round(mean(auc6$sensitivities[which(aucs6==max(aucs6[aucs6<= 0.975]))]),3)
+    # }
+    # if (is.nan(pp7)){
+    #   pp7<- round(mean(auc7$sensitivities[which(aucs7==max(aucs7[aucs7<= 0.975]))]),3)
+    # }
+    # if (is.nan(pp8)){
+    #   pp8<- round(mean(auc8$sensitivities[which(aucs8==max(aucs8[aucs8<= 0.975]))]),3)
+    # }
+    pp1
+    
+  }
+
+   
+   alphaf1<-sort(unlist(lapply(1:5000,function(x) {bootf1(datin = sim01)})))  
+   alphaf2<-sort(unlist(lapply(1:5000,function(x) {bootf1(datin = sim11)})))
+   alphaf3<-sort(unlist(lapply(1:5000,function(x) {bootf1(datin = sim22)}))) 
+   alphaf6<-sort(unlist(lapply(1:5000,function(x) {bootf1(datin = sim551)}))) 
+   alphaf7<-sort(unlist(lapply(1:5000,function(x) {bootf1(datin = sim552)}))) 
+   alphaf8<-sort(unlist(lapply(1:5000,function(x) {bootf1(datin = sim33)}))) 
+  
+   # alphafboot1<- mean(alphaf1) 
+   # alphafboot2<- mean(alphaf2) 
+   # alphafboot3<- mean(alphaf3) 
+   # alphafboot6<- mean(alphaf6) 
+   # alphafboot7<- mean(alphaf7) 
+   # alphafboot8<- mean(alphaf8) 
+   lci_alphaboot1<- round(as.numeric(quantile(alphaf1, c(0.025))),3) 
+   lci_alphaboot2<- round(as.numeric(quantile(alphaf2, c(0.025))),3)
+   lci_alphaboot3<- round(as.numeric(quantile(alphaf3, c(0.025))),3) 
+   lci_alphaboot6<- round(as.numeric(quantile(alphaf6, c(0.025))),3)
+   lci_alphaboot7<- round(as.numeric(quantile(alphaf7, c(0.025))),3) 
+   lci_alphaboot8<- round(as.numeric(quantile(alphaf8, c(0.025))),3)
+   
+   uci_alphaboot1<- round(as.numeric(quantile(alphaf1, c(0.975))),3)
+   uci_alphaboot2<- round(as.numeric(quantile(alphaf2, c(0.975))),3)
+   uci_alphaboot3<- round(as.numeric(quantile(alphaf3, c(0.975))),3)
+   uci_alphaboot6<- round(as.numeric(quantile(alphaf6, c(0.975))),3)
+   uci_alphaboot7<- round(as.numeric(quantile(alphaf7, c(0.975))),3)
+   uci_alphaboot8<- round(as.numeric(quantile(alphaf8, c(0.975))),3)
+   
+   
+  bootf <- function(d1,d2){
+    index1a<-sample(1:3000,size=500,replace=T)
+    index1b<-sample(3000:6000,size=500,replace=T)
+    index2a<-sample(1:3000,size=500,replace=T)
+    index2b<-sample(3000:6000,size=500,replace=T)
+    data1 <- d1[c(index1a,index1b),]
+    data2 <- d2[c(index2a,index2b),]
+    auc(roc(data1$dnum, data1$Phi))-auc(roc(data2$dnum, data2$Phi))
+  }
+  #0.025*5001=125  0.975*5001=4876
+  aucboot1<-sort(unlist(lapply(1:5000,function(x) {bootf(d1=sim11,d2=sim01)})))  
+  aucboot2<-sort(unlist(lapply(1:5000,function(x) {bootf(d1=sim11,d2=sim22)})))
+ # aucboot3<-sort(unlist(lapply(1:5000,function(x) {bootf(d1=sim11,d2=sim441)}))) 
+ # aucboot4<-sort(unlist(lapply(1:5000,function(x) {bootf(d1=sim11,d2=sim442)}))) 
+  aucboot5<-sort(unlist(lapply(1:5000,function(x) {bootf(d1=sim11,d2=sim551)}))) 
+  aucboot6<-sort(unlist(lapply(1:5000,function(x) {bootf(d1=sim11,d2=sim552)}))) 
+  aucboot7<-sort(unlist(lapply(1:5000,function(x) {bootf(d1=sim11,d2=sim33)}))) 
+  
+#   mean_aucboot1<- mean(aucboot1) 
+#   mean_aucboot2<- mean(aucboot2) 
+# #  mean_aucboot3<- mean(aucboot3) 
+# #  mean_aucboot4<- mean(aucboot4) 
+#   mean_aucboot5<- mean(aucboot5) 
+#   mean_aucboot6<- mean(aucboot6) 
+#   mean_aucboot7<- mean(aucboot7)
+  lci_aucboot1<- round(as.numeric(quantile(aucboot1, c(0.025))),3) #round(aucboot1[125],3)#round(aucboot1[125],3)
+  lci_aucboot2<- round(as.numeric(quantile(aucboot2, c(0.025))),3)#round(aucboot2[125],3)#round(aucboot2[125],3)
+#  lci_aucboot3<- round(as.numeric(quantile(aucboot3, c(0.025))),3)#round(aucboot3[125],3)#round(aucboot3[125],3)
+#  lci_aucboot4<- round(as.numeric(quantile(aucboot4, c(0.025))),3)#round(aucboot4[125],3)#round(aucboot4[125],3)
+  lci_aucboot5<- round(as.numeric(quantile(aucboot5, c(0.025))),3)#round(aucboot3[125],3)#round(aucboot3[125],3)
+  lci_aucboot6<- round(as.numeric(quantile(aucboot6, c(0.025))),3)#round(aucboot4[125],3)#round(aucboot4[125],3)
+  lci_aucboot7<- round(as.numeric(quantile(aucboot7, c(0.025))),3)#round(aucboot4[125],3)#round(aucboot4[125],3)
+  
+  uci_aucboot1<- round(as.numeric(quantile(aucboot1, c(0.975))),3)#round(aucboot1[4876],3)#round(aucboot1[4876],3)
+  uci_aucboot2<- round(as.numeric(quantile(aucboot2, c(0.975))),3)#round(aucboot2[4876],3)#round(aucboot2[4876],3)
+#  uci_aucboot3<- round(as.numeric(quantile(aucboot3, c(0.975))),3)#round(aucboot3[4876],3)#round(aucboot3[4876],3)
+#  uci_aucboot4<- round(as.numeric(quantile(aucboot4, c(0.975))),3)#round(aucboot4[4876],3)#round(aucboot4[4876],3)
+  uci_aucboot5<- round(as.numeric(quantile(aucboot5, c(0.975))),3)#round(aucboot3[4876],3)#round(aucboot3[4876],3)
+  uci_aucboot6<- round(as.numeric(quantile(aucboot6, c(0.975))),3)#round(aucboot4[4876],3)#round(aucboot4[4876],3)
+  uci_aucboot7<- round(as.numeric(quantile(aucboot7, c(0.975))),3)#round(aucboot4[4876],3)#round(aucboot4[4876],3)
+  
+  
+
+   
+  p <- p + 
+    
+    annotate("text", x = .15, y = 0.4, hjust = 0 ,size = 2,label = paste0(calc_auc(p)["method"][1,] ," AUC : ",round(calc_auc(p)["AUC"][1,],3), ', 95% CI = (', lci_aucboot7,',' ,uci_aucboot7, '), TPR = ','(',   lci_alphaboot8, ',' ,uci_alphaboot8 ,')', '  with FPR = 0.025'), check_overlap = TRUE)+
+    annotate("text", x = .15, y = 0.35, hjust = 0 ,size = 2,label = paste0(calc_auc(p)["method"][2,] ," AUC : ",round(calc_auc(p)["AUC"][2,],3), ', 95% CI = (', lci_aucboot5,',' ,uci_aucboot5, '), TPR = ', '(',   lci_alphaboot6,',' , uci_alphaboot6 ,')','  with FPR = 0.025'), check_overlap = TRUE)+   
+    annotate("text", x = .15, y = 0.3, hjust = 0 ,size = 2,label = paste0(calc_auc(p)["method"][3,] ," AUC : ",round(calc_auc(p)["AUC"][3,],3), ', 95% CI = (', lci_aucboot6,',' ,uci_aucboot6, '), TPR = ',   '(',   lci_alphaboot7,',' , uci_alphaboot7 ,')','  with FPR = 0.025'), check_overlap = TRUE)+
+    annotate("text", x = .15, y = 0.25, hjust = 0 ,size = 2,label = paste0(calc_auc(p)["method"][4,] ," AUC : ",round(calc_auc(p)["AUC"][4,],3), ', 95% CI = (', lci_aucboot1,',' ,uci_aucboot1, '), TPR = ',  '(',   lci_alphaboot1,',' , uci_alphaboot1 ,')','  with FPR = 0.025'), check_overlap = TRUE)+
+    annotate("text", x = .15, y = 0.2, hjust = 0 ,size = 2,label = paste0(calc_auc(p)["method"][5,] ," AUC : ",round(calc_auc(p)["AUC"][5,],3),   ', TPR = ',   '(',   lci_alphaboot2,',' , uci_alphaboot2 ,')','  with FPR = 0.025'), check_overlap = TRUE)+
+    annotate("text", x = .15, y = 0.15, hjust = 0 ,size = 2,label = paste0(calc_auc(p)["method"][6,] ," AUC : ",round(calc_auc(p)["AUC"][6,],3), ', 95% CI = (', lci_aucboot2,',' ,uci_aucboot2, '), TPR = ',   '(',   lci_alphaboot3, ',' ,uci_alphaboot3 ,')','  with FPR = 0.025'), check_overlap = TRUE)#+
+  
+
+   # annotate("text", x = .15, y = 0.2, hjust = 0 ,size = 2,label = paste0(calc_auc(p)["method"][5,] ," AUC : ",round(calc_auc(p)["AUC"][5,],3), ', 95% CI = (', lci_aucboot2,',' ,uci_aucboot2, '), TPR = ',   pp3,'  with FPR = 0.025'), check_overlap = TRUE)#+
+   # annotate("text", x = .15, y = 0.2, hjust = 0 ,size = 2,label = paste0(calc_auc(p)["method"][5,] ," AUC : ",round(calc_auc(p)["AUC"][5,],3), ', 95% CI = (', lci_aucboot2,',' ,uci_aucboot2, '), TPR = ',   pp3,'  with FPR = 0.025'), check_overlap = TRUE)#+
+  #  annotate("text", x = .15, y = 0.15, hjust = 0 ,size = 2,label = paste0(calc_auc(p)["method"][6,] ," AUC : ",round(calc_auc(p)["AUC"][6,],3), ', 95% CI = (', lci_aucboot6,',' ,uci_aucboot7, '), TPR = ',   pp3,'  with FPR = 0.025'), check_overlap = TRUE)+
+  #  annotate("text", x = .15, y = 0.1, hjust = 0 ,size = 2,label = paste0(calc_auc(p)["method"][7,] ," AUC : ",round(calc_auc(p)["AUC"][7,],3), ', 95% CI = (', lci_aucboot6,',' ,uci_aucboot7, '), TPR = ',   pp3,'  with FPR = 0.025'), check_overlap = TRUE)
+    
+  ggplot2::ggsave(filename = paste0(patha,".png"), plot = p,
+                  dpi = 300,
+                  width = widthn, height = heightn, units = "in")
+}
+
+
+plotfun2(pattern0='er_0_1_0_21.csv',patterna='twoarmsgsd0_1_0_2.csv',
+         patternb='ptw_0_1_0_21.csv',patternc='brar0_1_0_2.*\\.csv',
+        patternd='flgi0_1_0_2.*\\.csv',patterne='dabcd_0_1_0_2.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_1_0_2",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.1, 0.2')
+
+plotfun2(pattern0='er_0_1_0_31.csv',patterna='twoarmsgsd0_1_0_3.csv',
+         patternb='ptw_0_1_0_31.csv',patternc='brar0_1_0_3.*\\.csv',
+         patternd='flgi0_1_0_3.*\\.csv',patterne='dabcd_0_1_0_3.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_1_0_3",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.1, 0.3')
+
+plotfun2(pattern0='er_0_2_0_31.csv',patterna='twoarmsgsd0_2_0_3.csv',
+         patternb='ptw_0_2_0_31.csv',patternc='brar0_2_0_3.*\\.csv',
+         patternd='flgi0_2_0_3.*\\.csv',patterne='dabcd_0_2_0_3.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_2_0_3",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.2, 0.3')
+
+plotfun2(pattern0='er_0_2_0_41.csv',patterna='twoarmsgsd0_2_0_4.*\\.csv',
+         patternb='ptw_0_2_0_41.csv',patternc='brar0_2_0_4.*\\.csv',
+         patternd='flgi0_2_0_4.*\\.csv',patterne='dabcd_0_2_0_4.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_2_0_4",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.2, 0.4')
+
+plotfun2(pattern0='er_0_2_0_51.csv',patterna='twoarmsgsd0_2_0_5.*\\.csv',
+         patternb='ptw_0_2_0_51.csv',patternc='brar0_2_0_5.*\\.csv',
+         patternd='flgi0_2_0_5.*\\.csv',patterne='dabcd_0_2_0_5.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_2_0_5",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.2, 0.5')
+
+plotfun2(pattern0='er_0_3_0_41.csv',patterna='twoarmsgsd0_3_0_4.*\\.csv',
+         patternb='ptw_0_3_0_41.csv',patternc='brar0_3_0_4.*\\.csv',
+         patternd='flgi0_3_0_4.*\\.csv',patterne='dabcd_0_3_0_4.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_3_0_4",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.3, 0.4')
+
+plotfun2(pattern0='er_0_3_0_51.csv',patterna='twoarmsgsd0_3_0_5.*\\.csv',
+         patternb='ptw_0_3_0_51.csv',patternc='brar0_3_0_5.*\\.csv',
+         patternd='flgi0_3_0_5.*\\.csv',patterne='dabcd_0_3_0_5.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_3_0_5",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.3, 0.5')
+
+plotfun2(pattern0='er_0_3_0_61.csv',patterna='twoarmsgsd0_3_0_6.*\\.csv',
+         patternb='ptw_0_3_0_61.csv',patternc='brar0_3_0_6.*\\.csv',
+         patternd='flgi0_3_0_6.*\\.csv' ,patterne='dabcd_0_3_0_6.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_3_0_6",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.3, 0.6')
+
+plotfun2(pattern0='er_0_4_0_51.csv',patterna='twoarmsgsd0_4_0_5.*\\.csv',
+         patternb='ptw_0_4_0_51.csv',patternc='brar0_4_0_5.*\\.csv',
+         patternd='flgi0_4_0_5.*\\.csv',patterne='dabcd_0_4_0_5.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_4_0_5",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.4, 0.5')
+
+plotfun2(pattern0='er_0_4_0_61.csv',patterna='twoarmsgsd0_4_0_6.*\\.csv',
+         patternb='ptw_0_4_0_61.csv',patternc='brar0_4_0_6.*\\.csv',
+         patternd='flgi0_4_0_6.*\\.csv',patterne='dabcd_0_4_0_6.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_4_0_6",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.4, 0.6')
+
+plotfun2(pattern0='er_0_4_0_71.csv',patterna='twoarmsgsd0_4_0_7.*\\.csv',
+         patternb='ptw_0_4_0_71.csv',patternc='brar0_4_0_7.*\\.csv',
+         patternd='flgi0_4_0_7.*\\.csv',patterne='dabcd_0_4_0_7.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_4_0_7",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.4, 0.7')
+
+plotfun2(pattern0='er_0_5_0_61.csv',patterna='twoarmsgsd0_5_0_6.*\\.csv',
+         patternb='ptw_0_5_0_61.csv',patternc='brar0_5_0_6.*\\.csv',
+         patternd='flgi0_5_0_6.*\\.csv',patterne='dabcd_0_5_0_6.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_5_0_6",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.5, 0.6')
+
+plotfun2(pattern0='er_0_5_0_71.csv',patterna='twoarmsgsd0_5_0_7.*\\.csv',
+         patternb='ptw_0_5_0_71.csv',patternc='brar0_5_0_7.*\\.csv',
+         patternd='flgi0_5_0_7.*\\.csv',patterne='dabcd_0_5_0_7.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_5_0_7",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.5, 0.7')
+
+plotfun2(pattern0='er_0_5_0_81.csv',patterna='twoarmsgsd0_5_0_8.*\\.csv',
+         patternb='ptw_0_5_0_81.csv',patternc='brar0_5_0_8.*\\.csv',
+         patternd='flgi0_5_0_8.*\\.csv',patterne='dabcd_0_5_0_8.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_5_0_8",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.5, 0.8')
+
+plotfun2(pattern0='er_0_6_0_71.csv',patterna='twoarmsgsd0_6_0_7.*\\.csv',
+         patternb='ptw_0_6_0_71.csv',patternc='brar0_6_0_7.*\\.csv',
+         patternd='flgi0_6_0_7.*\\.csv',patterne='dabcd_0_6_0_7.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_6_0_7",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.6, 0.7')
+
+plotfun2(pattern0='er_0_6_0_81.csv',patterna='twoarmsgsd0_6_0_8.*\\.csv',
+         patternb='ptw_0_6_0_81.csv',patternc='brar0_6_0_8.*\\.csv',
+         patternd='flgi0_6_0_8.*\\.csv',patterne='dabcd_0_6_0_8.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_6_0_8",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.6, 0.8')
+
+plotfun2(pattern0='er_0_7_0_81.csv',patterna='twoarmsgsd0_7_0_8.*\\.csv',
+         patternb='ptw_0_7_0_81.csv',patternc='brar0_7_0_8.*\\.csv',
+         patternd='flgi0_7_0_8.*\\.csv',patterne='dabcd_0_7_0_8.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_7_0_8",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.7, 0.8')
+
+plotfun2(pattern0='er_0_7_0_91.csv',patterna='twoarmsgsd0_7_0_9.*\\.csv',
+         patternb='ptw_0_7_0_91.csv',patternc='brar0_7_0_9.*\\.csv',
+         patternd='flgi0_7_0_9.*\\.csv',patterne='dabcd_0_7_0_9.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_7_0_9",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.7, 0.9')
+
+plotfun2(pattern0='er_0_8_0_91.csv',patterna='twoarmsgsd0_8_0_9.*\\.csv',
+         patternb='ptw_0_8_0_91.csv',patternc='brar0_8_0_9.*\\.csv',
+         patternd='flgi0_8_0_9.*\\.csv',patterne='dabcd_0_8_0_9.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_8_0_9",
+         heightn=7.5,widthn=7.5,delay1='No Delay',hypo= '0.8, 0.9')
+
+plotfun2(pattern0='er_0_1_0_21.csv',patterna='twoarmsgsd0_1_0_2.csv',
+         patternb='ptw_0_1_0_21.csv',patternc='brar0_1_0_2.*\\.csv',
+         patternd='flgi0_1_0_2.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_1_0_2_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.1, 0.2')
+
+plotfun2(pattern0='er_0_1_0_31.csv',patterna='twoarmsgsd0_1_0_3.*\\.csv',
+         patternb='ptw_0_1_0_31.csv',patternc='brar0_1_0_3.*\\.csv',
+         patternd='flgi0_1_0_3.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_1_0_3_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.1, 0.3')
+
+plotfun2(pattern0='er_0_2_0_31.csv',patterna='twoarmsgsd0_2_0_3.*\\.csv',
+         patternb='ptw_0_2_0_31.csv',patternc='brar0_2_0_3.*\\.csv',
+         patternd='flgi0_2_0_3.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_2_0_3_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.2, 0.3')
+
+plotfun2(pattern0='er_0_2_0_41.csv',patterna='twoarmsgsd0_2_0_4.*\\.csv',
+         patternb='ptw_0_2_0_41.csv',patternc='brar0_2_0_4.*\\.csv',
+         patternd='flgi0_2_0_4.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_2_0_4_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.2, 0.4')
+
+plotfun2(pattern0='er_0_2_0_51.csv',patterna='twoarmsgsd0_2_0_5.*\\.csv',
+         patternb='ptw_0_2_0_51.csv',patternc='brar0_2_0_5.*\\.csv',
+         patternd='flgi0_2_0_5.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_2_0_5_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.2, 0.5')
+
+plotfun2(pattern0='er_0_3_0_41.csv',patterna='twoarmsgsd0_3_0_4.*\\.csv',
+         patternb='ptw_0_3_0_41.csv',patternc='brar0_3_0_4.*\\.csv',
+         patternd='flgi0_3_0_4.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_3_0_4_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.3, 0.4')
+
+plotfun2(pattern0='er_0_3_0_51.csv',patterna='twoarmsgsd0_3_0_5.*\\.csv',
+         patternb='ptw_0_3_0_51.csv',patternc='brar0_3_0_5.*\\.csv',
+         patternd='flgi0_3_0_5.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_3_0_5_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.3, 0.5')
+
+plotfun2(pattern0='er_0_3_0_61.csv',patterna='twoarmsgsd0_3_0_6.*\\.csv',
+         patternb='ptw_0_3_0_61.csv',patternc='brar0_3_0_6.*\\.csv',
+         patternd='flgi0_3_0_6.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_3_0_6_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.3, 0.6')
+
+plotfun2(pattern0='er_0_4_0_51.csv',patterna='twoarmsgsd0_4_0_5.*\\.csv',
+         patternb='ptw_0_4_0_51.csv',patternc='brar0_4_0_5.*\\.csv',
+         patternd='flgi0_4_0_5.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_4_0_5_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.4, 0.5')
+
+plotfun2(pattern0='er_0_4_0_61.csv',patterna='twoarmsgsd0_4_0_6.*\\.csv',
+         patternb='ptw_0_4_0_61.csv',patternc='brar0_4_0_6.*\\.csv',
+         patternd='flgi0_4_0_6.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_4_0_6_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.4, 0.6')
+
+plotfun2(pattern0='er_0_4_0_71.csv',patterna='twoarmsgsd0_4_0_7.*\\.csv',
+         patternb='ptw_0_4_0_71.csv',patternc='brar0_4_0_7.*\\.csv',
+         patternd='flgi0_4_0_7.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_4_0_7_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.4, 0.7')
+
+plotfun2(pattern0='er_0_5_0_61.csv',patterna='twoarmsgsd0_5_0_6.*\\.csv',
+         patternb='ptw_0_5_0_61.csv',patternc='brar0_5_0_6.*\\.csv',
+         patternd='flgi0_5_0_6.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_5_0_6_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.5, 0.6')
+
+plotfun2(pattern0='er_0_5_0_71.csv',patterna='twoarmsgsd0_5_0_7.*\\.csv',
+         patternb='ptw_0_5_0_71.csv',patternc='brar0_5_0_7.*\\.csv',
+         patternd='flgi0_5_0_7.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_5_0_7_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.5, 0.7')
+
+plotfun2(pattern0='er_0_5_0_81.csv',patterna='twoarmsgsd0_5_0_8.*\\.csv',
+         patternb='ptw_0_5_0_81.csv',patternc='brar0_5_0_8.*\\.csv',
+         patternd='flgi0_5_0_8.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_5_0_8_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.5, 0.8')
+
+plotfun2(pattern0='er_0_6_0_71.csv',patterna='twoarmsgsd0_6_0_7.*\\.csv',
+         patternb='ptw_0_6_0_71.csv',patternc='brar0_6_0_7.*\\.csv',
+         patternd='flgi0_6_0_7.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_6_0_7_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.6, 0.7')
+
+plotfun2(pattern0='er_0_6_0_81.csv',patterna='twoarmsgsd0_6_0_8.*\\.csv',
+         patternb='ptw_0_6_0_81.csv',patternc='brar0_6_0_8.*\\.csv',
+         patternd='flgi0_6_0_8.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_6_0_8_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.6, 0.8')
+
+plotfun2(pattern0='er_0_7_0_81.csv',patterna='twoarmsgsd0_7_0_8.*\\.csv',
+         patternb='ptw_0_7_0_81.csv',patternc='brar0_7_0_8.*\\.csv',
+         patternd='flgi0_7_0_8.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_7_0_8_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.7, 0.8')
+
+plotfun2(pattern0='er_0_7_0_91.csv',patterna='twoarmsgsd0_7_0_9.*\\.csv',
+         patternb='ptw_0_7_0_91.csv',patternc='brar0_7_0_9.*\\.csv',
+         patternd='flgi0_7_0_9.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_7_0_9_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.7, 0.9')
+
+plotfun2(pattern0='er_0_8_0_91.csv',patterna='twoarmsgsd0_8_0_9.*\\.csv',
+         patternb='ptw_0_8_0_91.csv',patternc='brar0_8_0_9.*\\.csv',
+         patternd='flgi0_8_0_9.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_8_0_9_1",
+         heightn=7.5,widthn=7.5,delay1='1 Month Delay',hypo= '0.8, 0.9')
+
+plotfun2(pattern0='er_0_1_0_21.csv',patterna='twoarmsgsd0_1_0_2.*\\.csv',
+         patternb='ptw_0_1_0_21.csv',patternc='brar0_1_0_2.*\\.csv',
+         patternd='flgi0_1_0_2.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_1_0_2_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.1, 0.2')
+
+plotfun2(pattern0='er_0_1_0_31.csv',patterna='twoarmsgsd0_1_0_3.*\\.csv',
+         patternb='ptw_0_1_0_31.csv',patternc='brar0_1_0_3.*\\.csv',
+         patternd='flgi0_1_0_3.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_1_0_3_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.1, 0.3')
+
+plotfun2(pattern0='er_0_2_0_31.csv',patterna='twoarmsgsd0_2_0_3.*\\.csv',
+         patternb='ptw_0_2_0_31.csv',patternc='brar0_2_0_3.*\\.csv',
+         patternd='flgi0_2_0_3.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_2_0_3_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.2, 0.3')
+
+plotfun2(pattern0='er_0_2_0_41.csv',patterna='twoarmsgsd0_2_0_4.*\\.csv',
+         patternb='ptw_0_2_0_41.csv',patternc='brar0_2_0_4.*\\.csv',
+         patternd='flgi0_2_0_4.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_2_0_4_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.2, 0.4')
+
+plotfun2(pattern0='er_0_2_0_51.csv',patterna='twoarmsgsd0_2_0_5.*\\.csv',
+         patternb='ptw_0_2_0_51.csv',patternc='brar0_2_0_5.*\\.csv',
+         patternd='flgi0_2_0_5.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_2_0_5_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.2, 0.5')
+
+plotfun2(pattern0='er_0_3_0_41.csv',patterna='twoarmsgsd0_3_0_4.*\\.csv',
+         patternb='ptw_0_3_0_41.csv',patternc='brar0_3_0_4.*\\.csv',
+         patternd='flgi0_3_0_4.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_3_0_4_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.3, 0.4')
+
+plotfun2(pattern0='er_0_3_0_51.csv',patterna='twoarmsgsd0_3_0_5.*\\.csv',
+         patternb='ptw_0_3_0_51.csv',patternc='brar0_3_0_5.*\\.csv',
+         patternd='flgi0_3_0_5.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_3_0_5_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.3, 0.5')
+
+plotfun2(pattern0='er_0_3_0_61.csv',patterna='twoarmsgsd0_3_0_6.*\\.csv',
+         patternb='ptw_0_3_0_61.csv',patternc='brar0_3_0_6.*\\.csv',
+         patternd='flgi0_3_0_6.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_3_0_6_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.3, 0.6')
+
+plotfun2(pattern0='er_0_4_0_51.csv',patterna='twoarmsgsd0_4_0_5.*\\.csv',
+         patternb='ptw_0_4_0_51.csv',patternc='brar0_4_0_5.*\\.csv',
+         patternd='flgi0_4_0_5.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_4_0_5_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.4, 0.5')
+
+plotfun2(pattern0='er_0_4_0_61.csv',patterna='twoarmsgsd0_4_0_6.*\\.csv',
+         patternb='ptw_0_4_0_61.csv',patternc='brar0_4_0_6.*\\.csv',
+         patternd='flgi0_4_0_6.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_4_0_6_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.4, 0.6')
+
+plotfun2(pattern0='er_0_4_0_71.csv',patterna='twoarmsgsd0_4_0_7.*\\.csv',
+         patternb='ptw_0_4_0_71.csv',patternc='brar0_4_0_7.*\\.csv',
+         patternd='flgi0_4_0_7.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_4_0_7_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.4, 0.7')
+
+plotfun2(pattern0='er_0_5_0_61.csv',patterna='twoarmsgsd0_5_0_6.*\\.csv',
+         patternb='ptw_0_5_0_61.csv',patternc='brar0_5_0_6.*\\.csv',
+         patternd='flgi0_5_0_6.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_5_0_6_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.5, 0.6')
+
+plotfun2(pattern0='er_0_5_0_71.csv',patterna='twoarmsgsd0_5_0_7.*\\.csv',
+         patternb='ptw_0_5_0_71.csv',patternc='brar0_5_0_7.*\\.csv',
+         patternd='flgi0_5_0_7.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_5_0_7_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.5, 0.7')
+
+plotfun2(pattern0='er_0_5_0_81.csv',patterna='twoarmsgsd0_5_0_8.*\\.csv',
+         patternb='ptw_0_5_0_81.csv',patternc='brar0_5_0_8.*\\.csv',
+         patternd='flgi0_5_0_8.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_5_0_8_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.5, 0.8')
+
+plotfun2(pattern0='er_0_6_0_71.csv',patterna='twoarmsgsd0_6_0_7.*\\.csv',
+         patternb='ptw_0_6_0_71.csv',patternc='brar0_6_0_7.*\\.csv',
+         patternd='flgi0_6_0_7.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_6_0_7_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.6, 0.7')
+
+plotfun2(pattern0='er_0_6_0_81.csv',patterna='twoarmsgsd0_6_0_8.*\\.csv',
+         patternb='ptw_0_6_0_81.csv',patternc='brar0_6_0_8.*\\.csv',
+         patternd='flgi0_6_0_8.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_6_0_8_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.6, 0.8')
+
+plotfun2(pattern0='er_0_7_0_81.csv',patterna='twoarmsgsd0_7_0_8.*\\.csv',
+         patternb='ptw_0_7_0_81.csv',patternc='brar0_7_0_8.*\\.csv',
+         patternd='flgi0_7_0_8.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_7_0_8_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.7, 0.8')
+
+plotfun2(pattern0='er_0_7_0_91.csv',patterna='twoarmsgsd0_7_0_9.*\\.csv',
+         patternb='ptw_0_7_0_91.csv',patternc='brar0_7_0_9.*\\.csv',
+         patternd='flgi0_7_0_9.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_7_0_9_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.7, 0.9')
+
+plotfun2(pattern0='er_0_8_0_91.csv',patterna='twoarmsgsd0_8_0_9.*\\.csv',
+         patternb='ptw_0_8_0_91.csv',patternc='brar0_8_0_9.*\\.csv',
+         patternd='flgi0_8_0_9.*\\.csv',
+         patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/roc_plot/two_arms/ROC_0_8_0_9_2",
+         heightn=7.5,widthn=7.5,delay1='2 Months Delay',hypo= '0.8, 0.9')
+
+
+# roc1<-roc(sim01$decision,sim01$Phi,levels=c('Control','Treatment'))
+# plot(roc1,
+#      print.auc=TRUE,
+#      print.auc.x=0.4,
+#      print.auc.y=0.5,
+#      auc.polygon=TRUE,
+#      auc.polygon.col="#fff7f7",
+#      grid=c(0.5,0.2),
+#      grid.col=c('black','black'),
+#      print.thres=TRUE,
+#      main='ROC curves',
+#      col='#FF2E63',
+#      legacy.axes=TRUE
+#      )
+
+
+
+
+# roc_curve(sim01,truth=factor(decision,levels=c('Treatment','Control')),
+#           Class1=Phi, # estimate=M,
+#           event_level='first')%>%autoplot
+# 
+# roc_curve(sim11,truth=factor(decision,levels=c('Treatment','Control')),
+#           Class1=Phi, # estimate=M,
+#           event_level='first')%>%autoplot
+# 
+# roc_curve(sim22,truth=factor(decision,levels=c('Treatment','Control')),
+#           Class1=Phi, # estimate=M,
+#           event_level='first')%>%autoplot
+
+
+# roc_curve(sim01,truth=factor(decision,levels=c('Control','Treatment')),
+#           Class1=Phi, # estimate=M,
+#           event_level='first')%>%autoplot
+# 
+# roc_curve(sim01, truth=decision, Class1=Phi) %>%
+#   ggplot(aes(x = 1 - specificity, y = sensitivity)) +
+#   geom_path() +
+#   geom_abline(lty = 3) +
+#   coord_equal() +
+#   theme_abbw()
+# 
+# roc_curve(sim01,truth=Phi,
+#           estimate=dnum,
+#           event_level='first')%>%autoplot
+# 
+# p<- hpc_cv %>%
+#   group_by(method) %>%
+#   roc_curve(obs, trt1:trt2) %>%
+#   autoplot() 
+# 
+#  p<- hpc_cv %>%
+#   group_by(Resample) %>%
+#   roc_curve(obs, VF:L) %>%
+#   autoplot() 
+#  p + geom_segment(aes(x = 0, y = 0.25, xend = 0.25, yend =0.25),linetype="dashed")+
+#    geom_segment(aes(x = 0.25, y = 0, xend = 0.25, yend =0.25),linetype="dashed")
+# 
+

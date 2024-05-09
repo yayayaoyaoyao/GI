@@ -1,0 +1,12 @@
+ggplot(data = subdat, aes(x = Phi0)) +
+  geom_histogram(bins=60)+
+  theme_classic()+
+  ggtitle(paste('H0',": " ,(hypo1+hypo2)/2,", " ,(hypo1+hypo2)/2,", " ,'H1', ": ",hypo1,", " , hypo2)) +#, "\n", "no delay",", " ,
+  # "DF = ",df,", " ,"BS = ",bs)) +
+  xlab(label = "Z Statistics") +
+  ylab('Frequency')+ylim(0, 100)+geom_density(aes(y=60*..density..),color="red")+
+  xlim(-5, 5)
+
+
+plot(y, f_y, type = 'l', xlab = "beta_hat", ylab = "f(beta_hat)", main = "beta = 0")
+lines(y, dnorm(y, mean = 0, sd = sqrt(1/I[4])), lty = 2)

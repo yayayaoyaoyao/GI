@@ -1,0 +1,563 @@
+library(gridExtra)
+library(ggplot2)
+patha="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/22_09_13/FLGI/"
+pathb='FLGI_PM/df_0/block_size_2/delayed_response_0'
+pathc= 'FLGI_PM/df_0/block_size_20/delayed_response_0'
+pathd='FLGI_PM/df_0_5/block_size_2/delayed_response_0'
+pathe='FLGI_PM/df_0_5/block_size_20/delayed_response_0'
+pathf= 'FLGI_PM/df_0_995/block_size_2/delayed_response_0'
+pathg= 'FLGI_PM/df_0_995/block_size_20/delayed_response_0'
+pathb1='FLGI_PM/df_0/block_size_2/delayed_response_1'
+pathc1= 'FLGI_PM/df_0/block_size_20/delayed_response_1'
+pathd1='FLGI_PM/df_0_5/block_size_2/delayed_response_1'
+pathe1='FLGI_PM/df_0_5/block_size_20/delayed_response_1'
+pathf1= 'FLGI_PM/df_0_995/block_size_2/delayed_response_1'
+pathg1= 'FLGI_PM/df_0_995/block_size_20/delayed_response_1'
+pathb2='FLGI_PM/df_0/block_size_2/delayed_response_2'
+pathc2= 'FLGI_PM/df_0/block_size_20/delayed_response_2'
+pathd2='FLGI_PM/df_0_5/block_size_2/delayed_response_2'
+pathe2='FLGI_PM/df_0_5/block_size_20/delayed_response_2'
+pathf2= 'FLGI_PM/df_0_995/block_size_2/delayed_response_2'
+pathg2= 'FLGI_PM/df_0_995/block_size_20/delayed_response_2'
+
+pathh='CFLGI/df_0/block_size_2/delayed_response_0'
+pathi= 'CFLGI/df_0/block_size_20/delayed_response_0'
+pathj='CFLGI/df_0_5/block_size_2/delayed_response_0'
+pathk='CFLGI/df_0_5/block_size_20/delayed_response_0'
+pathl = 'CFLGI/df_0_995/block_size_2/delayed_response_0'
+pathm = 'CFLGI/df_0_995/block_size_20/delayed_response_0'
+
+pathh1='CFLGI/df_0/block_size_2/delayed_response_1'
+pathi1= 'CFLGI/df_0/block_size_20/delayed_response_1'
+pathj1='CFLGI/df_0_5/block_size_2/delayed_response_1'
+pathk1='CFLGI/df_0_5/block_size_20/delayed_response_1'
+pathl1 = 'CFLGI/df_0_995/block_size_2/delayed_response_1'
+pathm1 = 'CFLGI/df_0_995/block_size_20/delayed_response_1'
+pathh2='CFLGI/df_0/block_size_2/delayed_response_2'
+pathi2= 'CFLGI/df_0/block_size_20/delayed_response_2'
+pathj2='CFLGI/df_0_5/block_size_2/delayed_response_2'
+pathk2='CFLGI/df_0_5/block_size_20/delayed_response_2'
+pathl2= 'CFLGI/df_0_995/block_size_2/delayed_response_2'
+pathm2= 'CFLGI/df_0_995/block_size_20/delayed_response_2'
+patterna='flgi.*\\.csv'
+
+
+
+files1<-list.files(paste(c(patha,pathb),collapse = ""),pattern = patterna,full.names=TRUE)
+sim1<-do.call(rbind,lapply(files1,read.csv,stringsAsFactors= TRUE))
+files2<-list.files(paste(c(patha,pathc),collapse = ""),pattern = patterna,full.names=TRUE)
+sim2<-do.call(rbind,lapply(files2,read.csv,stringsAsFactors= TRUE))
+files3<-list.files(paste(c(patha,pathd),collapse = ""),pattern = patterna,full.names=TRUE)
+sim3<-do.call(rbind,lapply(files3,read.csv,stringsAsFactors= TRUE))
+files4<-list.files(paste(c(patha,pathe),collapse = ""),pattern = patterna,full.names=TRUE)
+sim4<-do.call(rbind,lapply(files4,read.csv,stringsAsFactors= TRUE))
+files5<-list.files(paste(c(patha,pathf),collapse = ""),pattern = patterna,full.names=TRUE)
+sim5<-do.call(rbind,lapply(files5,read.csv,stringsAsFactors= TRUE))
+files6<-list.files(paste(c(patha,pathg),collapse = ""),pattern = patterna,full.names=TRUE)
+sim6<-do.call(rbind,lapply(files6,read.csv,stringsAsFactors= TRUE))
+
+files11<-list.files(paste(c(patha,pathb1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim11<-do.call(rbind,lapply(files11,read.csv,stringsAsFactors= TRUE))
+files21<-list.files(paste(c(patha,pathc1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim21<-do.call(rbind,lapply(files21,read.csv,stringsAsFactors= TRUE))
+files31<-list.files(paste(c(patha,pathd1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim31<-do.call(rbind,lapply(files31,read.csv,stringsAsFactors= TRUE))
+files41<-list.files(paste(c(patha,pathe1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim41<-do.call(rbind,lapply(files41,read.csv,stringsAsFactors= TRUE))
+files51<-list.files(paste(c(patha,pathf1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim51<-do.call(rbind,lapply(files51,read.csv,stringsAsFactors= TRUE))
+files61<-list.files(paste(c(patha,pathg1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim61<-do.call(rbind,lapply(files61,read.csv,stringsAsFactors= TRUE))
+
+files12<-list.files(paste(c(patha,pathb2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim12<-do.call(rbind,lapply(files12,read.csv,stringsAsFactors= TRUE))
+files22<-list.files(paste(c(patha,pathc2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim22<-do.call(rbind,lapply(files22,read.csv,stringsAsFactors= TRUE))
+files32<-list.files(paste(c(patha,pathd2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim32<-do.call(rbind,lapply(files32,read.csv,stringsAsFactors= TRUE))
+files42<-list.files(paste(c(patha,pathe2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim42<-do.call(rbind,lapply(files42,read.csv,stringsAsFactors= TRUE))
+files52<-list.files(paste(c(patha,pathf2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim52<-do.call(rbind,lapply(files52,read.csv,stringsAsFactors= TRUE))
+files62<-list.files(paste(c(patha,pathg2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim62<-do.call(rbind,lapply(files62,read.csv,stringsAsFactors= TRUE))
+
+files7<-list.files(paste(c(patha,pathh),collapse = ""),pattern = patterna,full.names=TRUE)
+sim7<-do.call(rbind,lapply(files7,read.csv,stringsAsFactors= TRUE))
+files8<-list.files(paste(c(patha,pathi),collapse = ""),pattern = patterna,full.names=TRUE)
+sim8<-do.call(rbind,lapply(files8,read.csv,stringsAsFactors= TRUE))
+files9<-list.files(paste(c(patha,pathj),collapse = ""),pattern = patterna,full.names=TRUE)
+sim9<-do.call(rbind,lapply(files9,read.csv,stringsAsFactors= TRUE))
+files10<-list.files(paste(c(patha,pathk),collapse = ""),pattern = patterna,full.names=TRUE)
+sim10<-do.call(rbind,lapply(files10,read.csv,stringsAsFactors= TRUE))
+files11a<-list.files(paste(c(patha,pathl),collapse = ""),pattern = patterna,full.names=TRUE)
+sim11a<-do.call(rbind,lapply(files11a,read.csv,stringsAsFactors= TRUE))
+files12a<-list.files(paste(c(patha,pathm),collapse = ""),pattern = patterna,full.names=TRUE)
+sim12a<-do.call(rbind,lapply(files12a,read.csv,stringsAsFactors= TRUE))
+
+files71<-list.files(paste(c(patha,pathh1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim71<-do.call(rbind,lapply(files71,read.csv,stringsAsFactors= TRUE))
+files81<-list.files(paste(c(patha,pathi1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim81<-do.call(rbind,lapply(files81,read.csv,stringsAsFactors= TRUE))
+files91<-list.files(paste(c(patha,pathj1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim91<-do.call(rbind,lapply(files91,read.csv,stringsAsFactors= TRUE))
+files101<-list.files(paste(c(patha,pathk1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim101<-do.call(rbind,lapply(files101,read.csv,stringsAsFactors= TRUE))
+files111<-list.files(paste(c(patha,pathl1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim111<-do.call(rbind,lapply(files111,read.csv,stringsAsFactors= TRUE))
+files121<-list.files(paste(c(patha,pathm1),collapse = ""),pattern = patterna,full.names=TRUE)
+sim121<-do.call(rbind,lapply(files121,read.csv,stringsAsFactors= TRUE))
+
+files72<-list.files(paste(c(patha,pathh2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim72<-do.call(rbind,lapply(files72,read.csv,stringsAsFactors= TRUE))
+files82<-list.files(paste(c(patha,pathi2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim82<-do.call(rbind,lapply(files82,read.csv,stringsAsFactors= TRUE))
+files92<-list.files(paste(c(patha,pathj2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim92<-do.call(rbind,lapply(files92,read.csv,stringsAsFactors= TRUE))
+files102<-list.files(paste(c(patha,pathk2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim102<-do.call(rbind,lapply(files102,read.csv,stringsAsFactors= TRUE))
+files112<-list.files(paste(c(patha,pathl2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim112<-do.call(rbind,lapply(files112,read.csv,stringsAsFactors= TRUE))
+files122<-list.files(paste(c(patha,pathm2),collapse = ""),pattern = patterna,full.names=TRUE)
+sim122<-do.call(rbind,lapply(files122,read.csv,stringsAsFactors= TRUE))
+
+#par(mfrow = c(3,3))
+plotfun<-function(dat,enrollrate,hypo1,hypo2,df,bs){
+   subdat<-dat[dat$hypothesisn1==hypo1 & dat$hypothesisn2==hypo2 & dat$enrollrate==enrollrate &
+               dat$proportion1==0.5 & dat$proportion2==0,]
+   # l1<-expression(paste(H[0],": " ))
+   # l2<-expression(paste(H[1],": " ))
+      ggplot(data = subdat, aes(x = Phi0)) +
+          geom_histogram(bins=60)+
+       theme_classic()+
+        ggtitle(paste('H0',": " ,hypo1,", " ,hypo1,", " ,'H1', ": ",hypo1,", " , hypo2)) +#, "\n", "no delay",", " ,
+       # "DF = ",df,", " ,"BS = ",bs)) +
+        xlab(label = "Z Statistics") +
+        ylab('Frequency')+ylim(0, 100)+
+        xlim(-5, 5)
+
+        # hist(subdat$Phi0,breaks=30,xlim=c(-3,3),main = paste('H0',": " ,hypo1,", " ,hypo1,", " ,'H1', ": ",hypo1,", " , hypo2),
+        #      xlab='Z Statistics',ylab='Frequency')
+}
+
+plotfun1<-function(dat,enrollrate,df,bs,path1,top1){
+ plot1<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.1,hypo2=0.2, df=df, bs=bs)
+ plot2<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.1,hypo2=0.3, df=df, bs=bs)
+ plot3<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.2,hypo2=0.3, df=df, bs=bs)
+ plot4<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.2,hypo2=0.4, df=df, bs=bs)
+ plot5<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.2,hypo2=0.5, df=df, bs=bs)
+ plot6<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.3,hypo2=0.4, df=df, bs=bs)
+ plot7<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.3,hypo2=0.5, df=df, bs=bs)
+ plot8<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.3,hypo2=0.6, df=df, bs=bs)
+ plot9<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.4,hypo2=0.5, df=df, bs=bs)
+ plot10<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.4,hypo2=0.6, df=df, bs=bs)
+ plot11<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.4,hypo2=0.7, df=df, bs=bs)
+ plot12<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.5,hypo2=0.6, df=df, bs=bs)
+ plot13<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.5,hypo2=0.7, df=df, bs=bs)
+ plot14<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.5,hypo2=0.8, df=df, bs=bs)
+ plot15<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.6,hypo2=0.7, df=df, bs=bs)
+ plot16<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.6,hypo2=0.8, df=df, bs=bs)
+ plot17<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.7,hypo2=0.8, df=df, bs=bs)
+ plot18<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.7,hypo2=0.9, df=df, bs=bs)
+ plot19<-plotfun(dat=dat,enrollrate=enrollrate, hypo1=0.8,hypo2=0.9, df=df, bs=bs)
+ ggsave(path1,width=10, height=15,grid.arrange(top=top1,
+         plot1, plot2,plot3, plot4,plot5, plot6,plot7, plot8,plot9, plot10,
+         plot11, plot12,plot13, plot14,plot15, plot16,plot17, plot18,plot19 , ncol=3, nrow=7))
+
+}
+
+###################
+plotfun1(dat=sim1,enrollrate=0.1,df=0,bs=2,
+        path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_2_no_delay.pdf",
+        top1='Histogram of Z Statistics Using FLGI with No Delay, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim2,enrollrate=0.1,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_20_no_delay.pdf",
+         top1='Histogram of Z Statistics Using FLGI with No Delay, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim3,enrollrate=0.1,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_2_no_delay.pdf",
+         top1='Histogram of Z Statistics Using FLGI with No Delay, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim4,enrollrate=0.1,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_20_no_delay.pdf",
+         top1='Histogram of Z Statistics Using FLGI with No Delay, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim5,enrollrate=0.1,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_2_no_delay.pdf",
+         top1='Histogram of Z Statistics Using FLGI with No Delay, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim6,enrollrate=0.1,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_20_no_delay.pdf",
+         top1='Histogram of Z Statistics Using FLGI with No Delay, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim7,enrollrate=0.1,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_2_no_delay.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with No Delay, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim8,enrollrate=0.1,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_20_no_delay.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with No Delay, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim9,enrollrate=0.1,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_2_no_delay.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with No Delay, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim10,enrollrate=0.1,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_20_no_delay.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with No Delay, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim11a,enrollrate=0.1,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_2_no_delay.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with No Delay, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim12a,enrollrate=0.1,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_20_no_delay.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with No Delay, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+
+###################
+plotfun1(dat=sim11,enrollrate=0.1,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_2_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.1, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim21,enrollrate=0.1,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_20_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.1, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim31,enrollrate=0.1,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_2_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.1, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim41,enrollrate=0.1,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_20_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.1, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim51,enrollrate=0.1,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_2_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.1, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim61,enrollrate=0.1,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_20_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.1, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim11,enrollrate=0.5,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_2_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.5, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim21,enrollrate=0.5,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_20_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.5, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim31,enrollrate=0.5,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_2_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.5, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim41,enrollrate=0.5,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_20_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.5, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim51,enrollrate=0.5,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_2_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.5, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim61,enrollrate=0.5,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_20_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.5, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim11,enrollrate=0.9,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_2_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.9, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim21,enrollrate=0.9,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_20_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.9, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim31,enrollrate=0.9,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_2_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.9, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim41,enrollrate=0.9,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_20_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.9, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim51,enrollrate=0.9,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_2_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.9, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim61,enrollrate=0.9,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_20_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 1 Month Delay, ER=0.9, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+###################
+
+plotfun1(dat=sim71,enrollrate=0.1,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_2_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.1, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim81,enrollrate=0.1,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_20_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.1, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim91,enrollrate=0.1,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_2_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.1, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim101,enrollrate=0.1,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_20_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.1, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim111,enrollrate=0.1,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_2_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.1, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim121,enrollrate=0.1,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_20_1_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.1, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim71,enrollrate=0.5,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_2_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.5, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim81,enrollrate=0.5,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_20_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.5, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim91,enrollrate=0.5,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_2_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.5, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim101,enrollrate=0.5,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_20_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.5, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim111,enrollrate=0.5,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_2_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.5, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim121,enrollrate=0.5,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_20_1_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.5, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim71,enrollrate=0.9,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_2_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.9, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim81,enrollrate=0.9,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_20_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.9, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim91,enrollrate=0.9,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_2_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.9, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim101,enrollrate=0.9,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_20_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.9, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim111,enrollrate=0.9,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_2_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.9, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim121,enrollrate=0.9,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_20_1_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 1 Month Delay, ER=0.9, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+
+###################
+plotfun1(dat=sim12,enrollrate=0.1,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_2_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.1, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim22,enrollrate=0.1,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_20_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.1, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim32,enrollrate=0.1,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_2_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.1, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim42,enrollrate=0.1,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_20_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.1, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim52,enrollrate=0.1,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_2_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.1, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim62,enrollrate=0.1,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_20_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.1, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim12,enrollrate=0.5,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_2_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.5, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim22,enrollrate=0.5,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_20_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.5, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim32,enrollrate=0.5,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_2_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.5, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim42,enrollrate=0.5,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_20_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.5, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim52,enrollrate=0.5,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_2_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.5, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim62,enrollrate=0.5,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_20_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.5, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim12,enrollrate=0.9,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_2_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.9, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim22,enrollrate=0.9,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_20_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.9, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim32,enrollrate=0.9,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_2_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.9, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim42,enrollrate=0.9,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_5_bs_20_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.9, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim52,enrollrate=0.9,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_2_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.9, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim62,enrollrate=0.9,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_995_bs_20_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using FLGI with 2 Month Delay, ER=0.9, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+###################
+
+plotfun1(dat=sim72,enrollrate=0.1,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_2_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.1, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim82,enrollrate=0.1,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_20_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.1, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim92,enrollrate=0.1,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_2_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.1, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim102,enrollrate=0.1,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_20_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.1, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim112,enrollrate=0.1,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_2_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.1, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim122,enrollrate=0.1,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_20_2_month_delay_0.1.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.1, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim72,enrollrate=0.5,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_2_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.5, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim82,enrollrate=0.5,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_20_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.5, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim92,enrollrate=0.5,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_2_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.5, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim102,enrollrate=0.5,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_20_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.5, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim112,enrollrate=0.5,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_2_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.5, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim122,enrollrate=0.5,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_20_2_month_delay_0.5.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.5, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+plotfun1(dat=sim72,enrollrate=0.9,df=0,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_2_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.9, DF=0 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim82,enrollrate=0.9,df=0,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_bs_20_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.9, DF=0 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim92,enrollrate=0.9,df=0.5,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_2_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.9, DF=0.5 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim102,enrollrate=0.9,df=0.5,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_5_bs_20_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.9, DF=0.5 and BS=20 Under the Null Hypothesis')
+
+plotfun1(dat=sim112,enrollrate=0.9,df=0.995,bs=2,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_2_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.9, DF=0.995 and BS=2 Under the Null Hypothesis')
+
+plotfun1(dat=sim122,enrollrate=0.9,df=0.995,bs=20,
+         path1="C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/CFLGI_df_0_995_bs_20_2_month_delay_0.9.pdf",
+         top1='Histogram of Z Statistics Using CFLGI with 2 Month Delay, ER=0.9, DF=0.995 and BS=20 Under the Null Hypothesis')
+
+
+# plot1<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.1,hypo2=0.2, df=0, bs=2)
+# plot2<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.1,hypo2=0.3, df=0, bs=2)
+# plot3<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.2,hypo2=0.3, df=0, bs=2)
+# plot4<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.2,hypo2=0.4, df=0, bs=2)
+# plot5<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.2,hypo2=0.5, df=0, bs=2)
+# plot6<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.3,hypo2=0.4, df=0, bs=2)
+# plot7<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.3,hypo2=0.5, df=0, bs=2)
+# plot8<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.3,hypo2=0.6, df=0, bs=2)
+# plot9<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.4,hypo2=0.5, df=0, bs=2)
+# plot10<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.4,hypo2=0.6, df=0, bs=2)
+# plot11<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.4,hypo2=0.7, df=0, bs=2)
+# plot12<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.5,hypo2=0.6, df=0, bs=2)
+# plot13<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.5,hypo2=0.7, df=0, bs=2)
+# plot14<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.5,hypo2=0.8, df=0, bs=2)
+# plot15<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.6,hypo2=0.7, df=0, bs=2)
+# plot16<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.6,hypo2=0.8, df=0, bs=2)
+# plot17<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.7,hypo2=0.8, df=0, bs=2)
+# plot18<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.7,hypo2=0.9, df=0, bs=2)
+# plot19<-plotfun(dat=sim1,enrollrate=0.1, hypo1=0.8,hypo2=0.9, df=0, bs=2)
+#
+#
+# require(gridExtra)
+# # ggsave("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_2_no_delay.pdf",
+# #        width=9, height=15, arrangeGrob(plot1, plot2,plot3, plot4,plot5, plot6,plot7, plot8,plot9, plot10,
+# #        plot11, plot12,plot13, plot14,plot15, plot16,plot17, plot18,plot19 , ncol=3, nrow=7
+# #         ))
+#
+# ggsave("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_2_no_delay.pdf",
+#        width=10, height=15,grid.arrange(top='Histogram of Z Statistics Using FLGI with No Delay, DF=0 and BS=2 Under the Null Hypothesis',
+#        plot1, plot2,plot3, plot4,plot5, plot6,plot7, plot8,plot9, plot10,
+#        plot11, plot12,plot13, plot14,plot15, plot16,plot17, plot18,plot19 , ncol=3, nrow=7))
+#
+#        #width=9, height=15, arrangeGrob(plot1, plot2,plot3, plot4,plot5, plot6,plot7, plot8,plot9, plot10,
+#        #plot11, plot12,plot13, plot14,plot15, plot16,plot17, plot18,plot19, ncol=3))
+#
+# # pdf("C:/Users/cxu870/OneDrive - The University of Auckland/Desktop/final/plot/FLGI_df_0_bs_2_no_delay.pdf")
+# # grid.arrange(plot1, plot2,plot3, plot4,plot5, plot6,plot7, plot8,plot9, plot10,
+# #              plot11, plot12,plot13, plot14,plot15, plot16,plot17, plot18,plot19,ncol=3, rel_heights =  1/2)
+# # dev.off()
